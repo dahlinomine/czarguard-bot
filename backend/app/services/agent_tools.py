@@ -712,10 +712,11 @@ async def _bing_search(arguments: dict) -> str:
 
 
 async def _read_webpage(arguments: dict) -> str:
-    """Read web page content using Jina Reader with httpx fallback."""
+    """Read web page content. Priority: Jina Reader → trafilatura → raw body strip."""
     import httpx
     import re
     from html import unescape
+    from urllib.parse import urlparse
 
     url = arguments.get("url", "").strip()
     if not url:
@@ -725,87 +726,97 @@ async def _read_webpage(arguments: dict) -> str:
 
     max_chars = min(arguments.get("max_chars", 4000), 10000)
 
-    # Method 1: Jina Reader (returns clean markdown)
+    parsed = urlparse(url)
+    origin = f"{parsed.scheme}://{parsed.netloc}"
+    browser_headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Accept-Encoding": "identity",
+        "Referer": origin + "/",
+        "Upgrade-Insecure-Requests": "1",
+    }
+
+    def _truncate(text: str) -> str:
+        text = text.strip()
+        if len(text) > max_chars:
+            text = text[:max_chars] + f"\n\n[... truncated at {max_chars} chars]"
+        return text
+
+    # ── Method 1: Jina Reader (best for international & JS-rendered pages) ──
     try:
-        jina_url = f"https://r.jina.ai/{url}"
         async with httpx.AsyncClient(follow_redirects=True, timeout=20) as client:
             resp = await client.get(
-                jina_url,
-                headers={
-                    "User-Agent": "Mozilla/5.0",
-                    "Accept": "text/plain, text/markdown, */*",
-                },
+                f"https://r.jina.ai/{url}",
+                headers={"User-Agent": "Mozilla/5.0", "Accept": "text/plain, text/markdown, */*"},
             )
-        if resp.status_code == 200 and len(resp.text) > 100:
+        if resp.status_code == 200:
             text = resp.text.strip()
-            if len(text) > max_chars:
-                text = text[:max_chars] + f"\n\n[... truncated at {max_chars} chars]"
-            return f"📄 **Content from: {url}**\n\n{text}"
+            # Jina sometimes returns short error messages — validate content
+            if len(text) > 200 and not text.startswith("Error") and "Unable to" not in text[:100]:
+                return f"📄 **Content from: {url}**\n\n{_truncate(text)}"
     except Exception:
-        pass  # Fall through to direct fetch
+        pass
 
-    # Method 2: Direct httpx fetch + strip HTML tags
+    # ── Method 2: Fetch HTML + trafilatura (best for Chinese/gov sites) ──
+    raw_bytes = None
     try:
-        from urllib.parse import urlparse
-        parsed = urlparse(url)
-        origin = f"{parsed.scheme}://{parsed.netloc}"
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-            "Accept-Language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
-            "Accept-Encoding": "identity",
-            "Referer": origin + "/",
-            "Connection": "keep-alive",
-            "Upgrade-Insecure-Requests": "1",
-        }
         async with httpx.AsyncClient(follow_redirects=True, timeout=20, verify=False) as client:
-            resp = await client.get(url, headers=headers)
+            resp = await client.get(url, headers=browser_headers)
 
         if resp.status_code >= 400:
             return f"❌ Server returned HTTP {resp.status_code} for {url}"
 
-        # Detect encoding — many Chinese gov sites use GBK/GB2312
-        content_type = resp.headers.get("content-type", "")
-        charset_m = re.search(r'charset=([^\s;]+)', content_type, re.IGNORECASE)
-        charset = charset_m.group(1).lower() if charset_m else ''
-        if not charset:
-            # Try to detect from meta tag in raw bytes
-            raw_head = resp.content[:3000].decode('ascii', errors='ignore')
-            meta_m = re.search(r'charset=["\']?([^"\'\s;>]+)', raw_head, re.IGNORECASE)
-            charset = meta_m.group(1).lower() if meta_m else 'utf-8'
+        raw_bytes = resp.content
 
-        # Normalize encoding name
-        if charset in ('gb2312', 'gbk', 'gb18030', 'x-gbk'):
-            html = resp.content.decode('gbk', errors='replace')
-        else:
-            try:
-                html = resp.content.decode(charset, errors='replace')
-            except (LookupError, UnicodeDecodeError):
-                html = resp.content.decode('utf-8', errors='replace')
-
-        # Remove scripts, styles, nav, footer elements entirely
-        html = re.sub(r'<(script|style|nav|footer|aside)[^>]*>.*?</\1>', '', html, flags=re.DOTALL | re.IGNORECASE)
-        # Try to isolate <body> content
-        body_m = re.search(r'<body[^>]*>(.*?)</body>', html, re.DOTALL | re.IGNORECASE)
-        html = body_m.group(1) if body_m else html
-
-        # Strip all remaining HTML tags
-        text = re.sub(r'<[^>]+>', ' ', html)
-        text = unescape(text)
-        # Collapse whitespace
-        text = re.sub(r'[ \t]{2,}', ' ', text)
-        text = re.sub(r'\n\s*\n\s*\n+', '\n\n', text)
-        text = text.strip()
-
-        if not text or len(text) < 20:
-            return f"❌ Could not extract meaningful content from {url}"
-
-        if len(text) > max_chars:
-            text = text[:max_chars] + f"\n\n[... truncated at {max_chars} chars]"
-        return f"📄 **Content from: {url}**\n\n{text}"
+        try:
+            import trafilatura
+            # trafilatura auto-handles encoding (GBK, GB2312, UTF-8, etc.)
+            text = trafilatura.extract(
+                raw_bytes,
+                url=url,
+                include_comments=False,
+                include_tables=True,
+                no_fallback=False,
+                favor_recall=True,
+            )
+            if text and len(text.strip()) > 50:
+                return f"📄 **Content from: {url}**\n\n{_truncate(text)}"
+        except ImportError:
+            pass  # trafilatura not installed, fall through
+        except Exception:
+            pass  # parsing error, fall through
 
     except Exception as e:
-        return f"❌ Failed to read {url}: {str(e)[:200]}"
+        if raw_bytes is None:
+            return f"❌ Failed to fetch {url}: {str(e)[:200]}"
+
+    # ── Method 3: Raw body strip (last resort) ──
+    if raw_bytes:
+        try:
+            # Detect encoding from meta tag
+            head_ascii = raw_bytes[:3000].decode('ascii', errors='ignore')
+            meta_m = re.search(r'charset=["\']?([^"\'\s;>]+)', head_ascii, re.IGNORECASE)
+            charset = meta_m.group(1).lower() if meta_m else 'utf-8'
+            if charset in ('gb2312', 'gbk', 'gb18030', 'x-gbk'):
+                html = raw_bytes.decode('gbk', errors='replace')
+            else:
+                html = raw_bytes.decode(charset, errors='replace')
+
+            html = re.sub(r'<(script|style|nav|footer|aside)[^>]*>.*?</\1>', '', html, flags=re.DOTALL | re.IGNORECASE)
+            body_m = re.search(r'<body[^>]*>(.*?)</body>', html, re.DOTALL | re.IGNORECASE)
+            html = body_m.group(1) if body_m else html
+            text = re.sub(r'<[^>]+>', ' ', html)
+            text = unescape(text)
+            text = re.sub(r'[ \t]{2,}', ' ', text)
+            text = re.sub(r'\n{3,}', '\n\n', text).strip()
+
+            if text and len(text) > 20:
+                return f"📄 **Content from: {url}**\n\n{_truncate(text)}"
+        except Exception:
+            pass
+
+    return f"❌ Could not extract meaningful content from {url}"
 
 
 
