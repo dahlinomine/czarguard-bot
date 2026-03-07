@@ -87,13 +87,13 @@ async def _execute_schedule(schedule_id: uuid.UUID, agent_id: uuid.UUID, instruc
             # Load tools dynamically from DB (respects per-agent config and MCP tools)
             tools_for_llm = await get_agent_tools_for_llm(agent_id)
 
-            # Tool-calling loop (max 3 rounds for scheduled tasks)
-            for round_i in range(3):
+            # Tool-calling loop (max 50 rounds for scheduled tasks)
+            for round_i in range(50):
                 payload = {
                     "model": model.model,
                     "messages": messages,
                     "temperature": 0.7,
-                    "max_tokens": 2048,
+                    "max_tokens": 40960,
                     "tools": tools_for_llm if tools_for_llm else None,
                     **get_tool_params(model.provider),
                 }

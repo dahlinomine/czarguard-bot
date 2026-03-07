@@ -141,13 +141,13 @@ You are now in TASK EXECUTION MODE (not a conversation). A task has been assigne
         print(f"[TaskExec] Calling LLM with tools for task: {task_title}")
         reply = ""
 
-        # Tool-calling loop (max 5 rounds for task execution)
-        for round_i in range(5):
+        # Tool-calling loop (max 50 rounds for task execution)
+        for round_i in range(50):
             payload = {
                 "model": model.model,
                 "messages": messages,
                 "temperature": 0.7,
-                "max_tokens": 4096,
+                "max_tokens": 40960,
                 "tools": tools_for_llm if tools_for_llm else None,
                 **get_tool_params(model.provider),
             }
@@ -157,7 +157,7 @@ You are now in TASK EXECUTION MODE (not a conversation). A task has been assigne
 
             payload_str = json.dumps(payload, ensure_ascii=False)
             proc = await asyncio.create_subprocess_exec(
-                "curl", "-s", "--max-time", "120",
+                "curl", "-s", "--max-time", "1200",
                 "-X", "POST", url,
                 "-H", "Content-Type: application/json",
                 "-H", f"Authorization: Bearer {api_key}",
