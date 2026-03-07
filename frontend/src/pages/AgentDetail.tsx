@@ -997,6 +997,8 @@ export default function AgentDetail() {
     const [uploadToast, setUploadToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     const [editingRole, setEditingRole] = useState(false);
     const [roleInput, setRoleInput] = useState('');
+    const [editingName, setEditingName] = useState(false);
+    const [nameInput, setNameInput] = useState('');
     const showToast = (message: string, type: 'success' | 'error' = 'success') => {
         setUploadToast({ message, type });
         setTimeout(() => setUploadToast(null), 3000);
@@ -1043,10 +1045,46 @@ export default function AgentDetail() {
                 {/* Header */}
                 <div className="page-header">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                        <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'var(--accent-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>A</div>
+                        <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'var(--accent-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>{agent.name?.charAt(0).toUpperCase() || 'A'}</div>
                         <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-                            <h1 className="page-title">{agent.name}</h1>
-                            <p className="page-subtitle" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            {editingName ? (
+                                <input
+                                    className="page-title"
+                                    autoFocus
+                                    value={nameInput}
+                                    onChange={e => setNameInput(e.target.value)}
+                                    onBlur={async () => {
+                                        setEditingName(false);
+                                        if (nameInput.trim() && nameInput !== agent.name) {
+                                            await agentApi.update(id!, { name: nameInput.trim() } as any);
+                                            queryClient.invalidateQueries({ queryKey: ['agent', id] });
+                                        } else {
+                                            setNameInput(agent.name);
+                                        }
+                                    }}
+                                    onKeyDown={async e => {
+                                        if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                                        if (e.key === 'Escape') { setEditingName(false); setNameInput(agent.name); }
+                                    }}
+                                    style={{
+                                        background: 'var(--bg-elevated)', border: '1px solid var(--accent-primary)',
+                                        borderRadius: '6px', color: 'var(--text-primary)',
+                                        padding: '4px 10px', minWidth: '320px', width: 'auto', outline: 'none',
+                                        marginBottom: '0', display: 'block',
+                                    }}
+                                />
+                            ) : (
+                                <h1 className="page-title"
+                                    title="Click to edit name"
+                                    onClick={() => { setNameInput(agent.name); setEditingName(true); }}
+                                    style={{ cursor: 'text', borderBottom: '1px dashed transparent', display: 'inline-block', marginBottom: '0' }}
+                                    onMouseEnter={e => (e.currentTarget.style.borderBottomColor = 'var(--text-tertiary)')}
+                                    onMouseLeave={e => (e.currentTarget.style.borderBottomColor = 'transparent')}
+                                >
+                                    {agent.name}
+                                </h1>
+                            )}
+                            <p className="page-subtitle" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
                                 <span className={`status-dot ${statusKey}`} />
                                 {t(`agent.status.${statusKey}`)}
                                 {editingRole ? (
