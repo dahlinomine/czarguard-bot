@@ -313,6 +313,18 @@
         "deleteWarning": "This action is irreversible. All data for this digital employee will be permanently deleted.",
         "confirmDelete": "Confirm Delete",
         "typeToConfirm": "Type the agent name to confirm"
+      },
+      "expiry": {
+        "renew": "Renew",
+        "setExpiry": "Set Expiry",
+        "title": "Agent Expiry",
+        "expired": "Expired",
+        "currentExpiry": "Current expiry:",
+        "neverExpires": "Never expires",
+        "quickRenew": "Quick renew (from current base)",
+        "days": "{{count}}d",
+        "customDeadline": "Custom deadline",
+        "saving": "Saving..."
       }
     },
     "tools": {
@@ -425,6 +437,14 @@
     "placeholder": "Type a message...",
     "send": "Send"
   },
+  "messages": {
+    "title": "Messages",
+    "markAllRead": "Mark all as read ({{count}})",
+    "empty": "No messages",
+    "justNow": "Just now",
+    "minutesAgo": "{{count}} minutes ago",
+    "hoursAgo": "{{count}} hours ago"
+  },
   "enterprise": {
     "title": "Enterprise Settings",
     "tabs": {
@@ -472,7 +492,9 @@
       "collapse": "Collapse",
       "saveConfig": "Save Config",
       "description": "Description",
-      "parameters": "Parameters"
+      "parameters": "Parameters",
+      "initBuiltinsHint": "Start the backend first to initialize built-in tools.",
+      "emptyState": "No data. Start the backend first to initialize built-in tools."
     },
     "org": {
       "feishuSync": "Feishu Directory Sync",
@@ -519,7 +541,11 @@
       "time": "Time",
       "user": "User",
       "action": "Action",
-      "target": "Target"
+      "target": "Target",
+      "filterAll": "All",
+      "filterBackground": "Background",
+      "filterActions": "User Actions",
+      "records": "{{count}} records"
     },
     "notificationBar": {
       "title": "Notification Bar",
@@ -545,7 +571,12 @@
     "yes": "Yes",
     "no": "No",
     "all": "All",
-    "none": "None"
+    "none": "None",
+    "channels": {
+      "feishu": "Feishu",
+      "discord": "Discord",
+      "slack": "Slack"
+    }
   },
   "channelGuide": {
     "setupGuide": "Setup Guide",

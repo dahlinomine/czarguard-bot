@@ -10,7 +10,7 @@ const ACTION_ICONS: Record<string, string> = {
 };
 
 export default function Messages() {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const queryClient = useQueryClient();
     const { data: messages = [], isLoading } = useQuery({
         queryKey: ['messages-inbox'],
@@ -41,29 +41,29 @@ export default function Messages() {
         const d = new Date(iso);
         const now = new Date();
         const diffMs = now.getTime() - d.getTime();
-        if (diffMs < 60000) return '刚刚';
-        if (diffMs < 3600000) return `${Math.floor(diffMs / 60000)} 分钟前`;
-        if (diffMs < 86400000) return `${Math.floor(diffMs / 3600000)} 小时前`;
-        return d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        if (diffMs < 60000) return t('messages.justNow');
+        if (diffMs < 3600000) return t('messages.minutesAgo', { count: Math.floor(diffMs / 60000) });
+        if (diffMs < 86400000) return t('messages.hoursAgo', { count: Math.floor(diffMs / 3600000) });
+        return d.toLocaleDateString(i18n.language === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
     };
 
     return (
         <div style={{ maxWidth: '800px', margin: '0 auto', padding: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-                <h1 style={{ fontSize: '20px', fontWeight: 600, margin: 0 }}>消息中心</h1>
+                <h1 style={{ fontSize: '20px', fontWeight: 600, margin: 0 }}>{t('messages.title')}</h1>
                 {unreadCount > 0 && (
                     <button
                         className="btn btn-ghost"
                         onClick={() => markAllReadMutation.mutate()}
                         style={{ fontSize: '13px', color: 'var(--accent)' }}
                     >
-                        全部标为已读 ({unreadCount})
+                        {t('messages.markAllRead', { count: unreadCount })}
                     </button>
                 )}
             </div>
 
             {isLoading && (
-                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-tertiary)' }}>加载中...</div>
+                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-tertiary)' }}>{t('common.loading')}</div>
             )}
 
             {!isLoading && messages.length === 0 && (
@@ -71,8 +71,8 @@ export default function Messages() {
                     textAlign: 'center', padding: '60px 20px', color: 'var(--text-tertiary)',
                     background: 'var(--bg-secondary)', borderRadius: '12px',
                 }}>
-                    <div style={{ fontSize: '13px', marginBottom: '12px', color: 'var(--text-tertiary)' }}>暂无消息</div>
-                    <div>暂无消息</div>
+                    <div style={{ fontSize: '13px', marginBottom: '12px', color: 'var(--text-tertiary)' }}>{t('messages.empty')}</div>
+                    <div>{t('messages.empty')}</div>
                 </div>
             )}
 

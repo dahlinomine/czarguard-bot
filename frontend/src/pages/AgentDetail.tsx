@@ -486,7 +486,7 @@ function RelationshipEditor({ agentId, readOnly = false }: { agentId: string; re
 }
 
 export default function AgentDetail() {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
@@ -1292,7 +1292,7 @@ export default function AgentDetail() {
                                         style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '11px', color: 'var(--text-tertiary)', padding: '1px 4px', borderRadius: '4px', lineHeight: 1 }}
                                         onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-secondary)')}
                                         onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-                                    >✏️ {(agent as any).expires_at || (agent as any).is_expired ? '续期' : '设置过期'}</button>
+                                    >✏️ {t((agent as any).expires_at || (agent as any).is_expired ? 'agent.settings.expiry.renew' : 'agent.settings.expiry.setExpiry')}</button>
                                 )}
                             </p>
                         </div>
@@ -1911,7 +1911,11 @@ export default function AgentDetail() {
                                         ) : sessions.map((s: any) => {
                                             const isActive = activeSession?.id === s.id;
                                             const isOwn = s.user_id === String(currentUser?.id);
-                                            const channelLabel: Record<string, string> = { feishu: '飞书', discord: 'Discord', slack: 'Slack' };
+                                            const channelLabel: Record<string, string> = {
+                                                feishu: t('common.channels.feishu'),
+                                                discord: t('common.channels.discord'),
+                                                slack: t('common.channels.slack'),
+                                            };
                                             const chLabel = channelLabel[s.source_channel];
                                             return (
                                                 <div key={s.id} onClick={() => selectSession(s)}
@@ -1924,7 +1928,9 @@ export default function AgentDetail() {
                                                     </div>
                                                     <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                         {isOwn && isActive && wsConnected && <span className="status-dot running" style={{ width: '5px', height: '5px', flexShrink: 0 }} />}
-                                                        {s.last_message_at ? new Date(s.last_message_at).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : new Date(s.created_at).toLocaleString('zh-CN', { month: 'short', day: 'numeric' })}
+                                                        {s.last_message_at
+                                                            ? new Date(s.last_message_at).toLocaleString(i18n.language === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                                                            : new Date(s.created_at).toLocaleString(i18n.language === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric' })}
                                                         {s.message_count > 0 && <span style={{ marginLeft: 'auto' }}>{s.message_count}</span>}
                                                     </div>
                                                 </div>
@@ -1958,9 +1964,17 @@ export default function AgentDetail() {
                                                             onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}>
                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '1px' }}>
                                                                 <div style={{ fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-primary)', flex: 1 }}>{s.title}</div>
-                                                                {({ feishu: '飞书', discord: 'Discord', slack: 'Slack' } as Record<string, string>)[s.source_channel] && (
+                                                                {({
+                                                                    feishu: t('common.channels.feishu'),
+                                                                    discord: t('common.channels.discord'),
+                                                                    slack: t('common.channels.slack'),
+                                                                } as Record<string, string>)[s.source_channel] && (
                                                                     <span style={{ fontSize: '9px', padding: '1px 4px', borderRadius: '3px', background: 'var(--bg-tertiary)', color: 'var(--text-tertiary)', flexShrink: 0 }}>
-                                                                        {({ feishu: '飞书', discord: 'Discord', slack: 'Slack' } as Record<string, string>)[s.source_channel]}
+                                                                        {({
+                                                                            feishu: t('common.channels.feishu'),
+                                                                            discord: t('common.channels.discord'),
+                                                                            slack: t('common.channels.slack'),
+                                                                        } as Record<string, string>)[s.source_channel]}
                                                                     </span>
                                                                 )}
                                                             </div>
@@ -3212,21 +3226,26 @@ export default function AgentDetail() {
                         <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '24px', width: '360px', maxWidth: '90vw' }}
                             onClick={e => e.stopPropagation()}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600 }}>⏰ Agent 过期时间</h3>
+                                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600 }}>⏰ {t('agent.settings.expiry.title')}</h3>
                                 <button onClick={() => setShowExpiryModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', fontSize: '18px', lineHeight: 1 }}>×</button>
                             </div>
                             <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '16px' }}>
                                 {(agent as any).is_expired
-                                    ? <span style={{ color: 'var(--error)', fontWeight: 600 }}>⏰ 已过期</span>
+                                    ? <span style={{ color: 'var(--error)', fontWeight: 600 }}>⏰ {t('agent.settings.expiry.expired')}</span>
                                     : (agent as any).expires_at
-                                        ? <>当前过期时间：<strong>{new Date((agent as any).expires_at).toLocaleString()}</strong></>
-                                        : <span style={{ color: 'var(--success)' }}>永不过期</span>
+                                        ? <>{t('agent.settings.expiry.currentExpiry')} <strong>{new Date((agent as any).expires_at).toLocaleString(i18n.language === 'zh' ? 'zh-CN' : 'en-US')}</strong></>
+                                        : <span style={{ color: 'var(--success)' }}>{t('agent.settings.expiry.neverExpires')}</span>
                                 }
                             </div>
                             <div style={{ marginBottom: '16px' }}>
-                                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginBottom: '8px' }}>快速续期（从当前基础上）</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginBottom: '8px' }}>{t('agent.settings.expiry.quickRenew')}</div>
                                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                                    {([['+ 24h', 24], ['+ 7天', 168], ['+ 30天', 720], ['+ 90天', 2160]] as [string, number][]).map(([label, h]) => (
+                                    {([
+                                        ['+ 24h', 24],
+                                        [`+ ${t('agent.settings.expiry.days', { count: 7 })}`, 168],
+                                        [`+ ${t('agent.settings.expiry.days', { count: 30 })}`, 720],
+                                        [`+ ${t('agent.settings.expiry.days', { count: 90 })}`, 2160],
+                                    ] as [string, number][]).map(([label, h]) => (
                                         <button key={h} onClick={() => addHours(h)}
                                             style={{ padding: '4px 10px', borderRadius: '6px', border: '1px solid var(--border-subtle)', background: 'var(--bg-primary)', cursor: 'pointer', fontSize: '12px', color: 'var(--text-primary)' }}>
                                             {label}
@@ -3235,24 +3254,24 @@ export default function AgentDetail() {
                                 </div>
                             </div>
                             <div style={{ marginBottom: '20px' }}>
-                                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginBottom: '6px' }}>自定义截止时间</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginBottom: '6px' }}>{t('agent.settings.expiry.customDeadline')}</div>
                                 <input type="datetime-local" value={expiryValue} onChange={e => setExpiryValue(e.target.value)}
                                     style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px', boxSizing: 'border-box' }} />
                             </div>
                             <div style={{ display: 'flex', gap: '8px', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <button onClick={() => saveExpiry(true)} disabled={expirySaving}
                                     style={{ padding: '7px 12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'none', cursor: 'pointer', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                                    🔓 永不过期
+                                    🔓 {t('agent.settings.expiry.neverExpires')}
                                 </button>
                                 <div style={{ display: 'flex', gap: '8px' }}>
                                     <button onClick={() => setShowExpiryModal(false)} disabled={expirySaving}
                                         style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'none', cursor: 'pointer', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                                        取消
+                                        {t('common.cancel')}
                                     </button>
                                     <button onClick={() => saveExpiry(false)} disabled={expirySaving || !expiryValue}
                                         className="btn btn-primary"
                                         style={{ opacity: !expiryValue ? 0.5 : 1 }}>
-                                        {expirySaving ? '保存中…' : '保存'}
+                                        {expirySaving ? t('agent.settings.expiry.saving') : t('common.save')}
                                     </button>
                                 </div>
                             </div>

@@ -899,7 +899,11 @@ export default function EnterpriseSettings() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         {/* Sub-filter pills */}
                         <div style={{ display: 'flex', gap: '8px', padding: '8px 12px', borderBottom: '1px solid var(--border-color)' }}>
-                            {([['all', '📋 全部'], ['background', '⚙️ 后台服务'], ['actions', '👤 用户操作']] as const).map(([key, label]) => (
+                            {([
+                                ['all', `📋 ${t('enterprise.audit.filterAll')}`],
+                                ['background', `⚙️ ${t('enterprise.audit.filterBackground')}`],
+                                ['actions', `👤 ${t('enterprise.audit.filterActions')}`],
+                            ] as const).map(([key, label]) => (
                                 <button key={key}
                                     onClick={() => setAuditFilter(key as any)}
                                     style={{
@@ -912,7 +916,7 @@ export default function EnterpriseSettings() {
                                 >{label}</button>
                             ))}
                             <span style={{ marginLeft: 'auto', fontSize: '11px', color: 'var(--text-tertiary)', alignSelf: 'center' }}>
-                                {filteredAuditLogs.length} 条记录
+                                {t('enterprise.audit.records', { count: filteredAuditLogs.length })}
                             </span>
                         </div>
                         {/* Log entries */}
@@ -1325,7 +1329,7 @@ export default function EnterpriseSettings() {
                                         </div>
                                     );
                                 })}
-                                {allTools.length === 0 && <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-tertiary)' }}>{t('common.noData')}。请先启动后端以初始化内置工具。</div>}
+                                {allTools.length === 0 && <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-tertiary)' }}>{t('enterprise.tools.emptyState')}</div>}
                             </div>
                         </>}
                     </div>

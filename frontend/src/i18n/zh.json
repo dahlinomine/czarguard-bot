@@ -312,6 +312,18 @@
         "deleteWarning": "此操作不可逆，将永久删除此数字员工及其所有数据。",
         "confirmDelete": "确认删除",
         "typeToConfirm": "输入数字员工名称以确认"
+      },
+      "expiry": {
+        "renew": "续期",
+        "setExpiry": "设置过期",
+        "title": "Agent 过期时间",
+        "expired": "已过期",
+        "currentExpiry": "当前过期时间：",
+        "neverExpires": "永不过期",
+        "quickRenew": "快速续期（从当前基础上）",
+        "days": "{{count}}天",
+        "customDeadline": "自定义截止时间",
+        "saving": "保存中..."
       }
     },
     "tools": {
@@ -424,6 +436,14 @@
     "placeholder": "输入消息...",
     "send": "发送"
   },
+  "messages": {
+    "title": "消息中心",
+    "markAllRead": "全部标为已读 ({{count}})",
+    "empty": "暂无消息",
+    "justNow": "刚刚",
+    "minutesAgo": "{{count}} 分钟前",
+    "hoursAgo": "{{count}} 小时前"
+  },
   "enterprise": {
     "title": "企业设置",
     "tabs": {
@@ -471,7 +491,9 @@
       "collapse": "收起",
       "saveConfig": "保存配置",
       "description": "描述",
-      "parameters": "参数配置"
+      "parameters": "参数配置",
+      "initBuiltinsHint": "请先启动后端以初始化内置工具。",
+      "emptyState": "暂无数据。请先启动后端以初始化内置工具。"
     },
     "org": {
       "feishuSync": "飞书通讯录同步配置",
@@ -529,7 +551,11 @@
       "time": "时间",
       "user": "用户",
       "action": "操作",
-      "target": "对象"
+      "target": "对象",
+      "filterAll": "全部",
+      "filterBackground": "后台服务",
+      "filterActions": "用户操作",
+      "records": "{{count}} 条记录"
     },
     "notificationBar": {
       "title": "顶部通知条",
@@ -555,7 +581,12 @@
     "yes": "是",
     "no": "否",
     "all": "全部",
-    "none": "无"
+    "none": "无",
+    "channels": {
+      "feishu": "飞书",
+      "discord": "Discord",
+      "slack": "Slack"
+    }
   },
   "channelGuide": {
     "setupGuide": "配置说明",
