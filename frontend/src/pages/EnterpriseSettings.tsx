@@ -1170,10 +1170,10 @@ export default function EnterpriseSettings() {
                     <div>
                         {/* Sub-tab pills */}
                         <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px' }}>
-                            {([['global', '🔧 Global Tools'], ['agent-installed', '🤖 Agent-installed']] as const).map(([key, label]) => (
+                            {([['global', 'Global Tools'], ['agent-installed', 'Agent-installed']] as const).map(([key, label]) => (
                                 <button key={key} onClick={() => { setToolsView(key as any); if (key === 'agent-installed') loadAgentInstalledTools(); }} style={{
                                     padding: '4px 14px', borderRadius: '12px', fontSize: '12px', fontWeight: 500, cursor: 'pointer', border: 'none',
-                                    background: toolsView === key ? 'var(--accent-color)' : 'var(--bg-tertiary)',
+                                    background: toolsView === key ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
                                     color: toolsView === key ? '#fff' : 'var(--text-secondary)', transition: 'all 0.15s',
                                 }}>{label}</button>
                             ))}
