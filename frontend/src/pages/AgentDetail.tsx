@@ -239,7 +239,15 @@ function ToolsManager({ agentId }: { agentId: string }) {
 
                         {configTool.config_schema?.fields?.length > 0 ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                {configTool.config_schema.fields.map((field: any) => (
+                                {configTool.config_schema.fields
+                                    .filter((field: any) => {
+                                        // Handle depends_on: hide fields unless dependency is met
+                                        if (!field.depends_on) return true;
+                                        return Object.entries(field.depends_on).every(([depKey, depVals]: [string, any]) =>
+                                            (depVals as string[]).includes(configData[depKey] ?? '')
+                                        );
+                                    })
+                                    .map((field: any) => (
                                     <div key={field.key}>
                                         <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, marginBottom: '4px' }}>
                                             {field.label}
@@ -255,11 +263,49 @@ function ToolsManager({ agentId }: { agentId: string }) {
                                             <select className="form-input" value={configData[field.key] ?? field.default ?? ''} onChange={e => setConfigData(p => ({ ...p, [field.key]: e.target.value }))}>
                                                 {(field.options || []).map((o: any) => <option key={o.value} value={o.value}>{o.label}</option>)}
                                             </select>
+                                        ) : field.type === 'number' ? (
+                                            <input type="number" className="form-input" value={configData[field.key] ?? field.default ?? ''} placeholder={field.placeholder || ''} min={field.min} max={field.max} onChange={e => setConfigData(p => ({ ...p, [field.key]: e.target.value ? Number(e.target.value) : '' }))} />
                                         ) : (
                                             <input type="text" className="form-input" value={configData[field.key] ?? ''} placeholder={field.placeholder || 'Leave blank to use global default'} onChange={e => setConfigData(p => ({ ...p, [field.key]: e.target.value }))} />
                                         )}
                                     </div>
                                 ))}
+                                {/* Email tool: test connection button + help text */}
+                                {configTool.category === 'email' && (
+                                    <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        <button
+                                            className="btn btn-secondary"
+                                            style={{ alignSelf: 'flex-start' }}
+                                            onClick={async () => {
+                                                const btn = document.getElementById('email-test-btn');
+                                                const status = document.getElementById('email-test-status');
+                                                if (btn) btn.textContent = 'Testing...';
+                                                if (btn) (btn as HTMLButtonElement).disabled = true;
+                                                try {
+                                                    const token = localStorage.getItem('token');
+                                                    const res = await fetch('/api/tools/test-email', {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                                                        body: JSON.stringify({ config: configData }),
+                                                    });
+                                                    const data = await res.json();
+                                                    if (status) {
+                                                        status.textContent = data.ok
+                                                            ? `${data.imap}\n${data.smtp}`
+                                                            : `${data.imap || ''}\n${data.smtp || ''}\n${data.error || ''}`;
+                                                        status.style.color = data.ok ? 'var(--success)' : 'var(--error)';
+                                                    }
+                                                } catch (e: any) {
+                                                    if (status) { status.textContent = `Error: ${e.message}`; status.style.color = 'var(--error)'; }
+                                                } finally {
+                                                    if (btn) { btn.textContent = 'Test Connection'; (btn as HTMLButtonElement).disabled = false; }
+                                                }
+                                            }}
+                                            id="email-test-btn"
+                                        >Test Connection</button>
+                                        <div id="email-test-status" style={{ fontSize: '11px', whiteSpace: 'pre-line', minHeight: '16px' }}></div>
+                                    </div>
+                                )}
                             </div>
                         ) : (
                             <div>

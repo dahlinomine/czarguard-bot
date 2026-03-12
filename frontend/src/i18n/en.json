@@ -338,7 +338,8 @@
       "communication": "Communication",
       "search": "Search",
       "custom": "Custom",
-      "general": "General"
+      "general": "General",
+      "email": "Email"
     },
     "upload": {
       "success": "Upload successful",

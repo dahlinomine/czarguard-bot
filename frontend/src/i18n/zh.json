@@ -340,7 +340,8 @@
       "communication": "通讯",
       "search": "搜索",
       "custom": "自定义",
-      "general": "通用"
+      "general": "通用",
+      "email": "邮件"
     },
     "upload": {
       "success": "上传成功",
