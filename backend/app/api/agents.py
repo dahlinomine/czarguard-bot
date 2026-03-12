@@ -17,6 +17,30 @@ from app.schemas.schemas import AgentCreate, AgentOut, AgentUpdate
 router = APIRouter(prefix="/agents", tags=["agents"])
 
 
+async def _lazy_reset_token_counters(agent: Agent, db: AsyncSession) -> bool:
+    """Reset daily/monthly token counters if the day or month has changed.
+
+    Returns True if any counter was reset (caller should commit/flush).
+    """
+    from datetime import datetime, timezone as tz
+    now = datetime.now(tz.utc)
+    changed = False
+
+    last_daily = agent.last_daily_reset
+    if last_daily is None or last_daily.date() < now.date():
+        agent.tokens_used_today = 0
+        agent.last_daily_reset = now
+        changed = True
+
+    last_monthly = agent.last_monthly_reset
+    if last_monthly is None or (last_monthly.year, last_monthly.month) < (now.year, now.month):
+        agent.tokens_used_month = 0
+        agent.last_monthly_reset = now
+        changed = True
+
+    return changed
+
+
 @router.get("/templates")
 async def list_templates(
     current_user: User = Depends(get_current_user),
@@ -57,7 +81,15 @@ async def list_agents(
         if tenant_id:
             stmt = stmt.where(Agent.tenant_id == tenant_id)
         result = await db.execute(stmt.order_by(Agent.created_at.desc()))
-        return [AgentOut.model_validate(a) for a in result.scalars().all()]
+        agents = result.scalars().all()
+        # Lazy reset token counters
+        needs_flush = False
+        for a in agents:
+            if await _lazy_reset_token_counters(a, db):
+                needs_flush = True
+        if needs_flush:
+            await db.commit()
+        return [AgentOut.model_validate(a) for a in agents]
 
     # agent_admin sees their own created agents + permitted
     # member sees only permitted
@@ -88,7 +120,15 @@ async def list_agents(
     result = await db.execute(
         select(Agent).where(Agent.id.in_(select(combined.c.id))).order_by(Agent.created_at.desc())
     )
-    return [AgentOut.model_validate(a) for a in result.scalars().all()]
+    agents = result.scalars().all()
+    # Lazy reset token counters
+    needs_flush = False
+    for a in agents:
+        if await _lazy_reset_token_counters(a, db):
+            needs_flush = True
+    if needs_flush:
+        await db.commit()
+    return [AgentOut.model_validate(a) for a in agents]
 
 
 @router.post("/", response_model=AgentOut, status_code=status.HTTP_201_CREATED)
@@ -229,6 +269,9 @@ async def get_agent(
 ):
     """Get agent details."""
     agent, access_level = await check_agent_access(db, current_user, agent_id)
+    # Lazy reset token counters
+    if await _lazy_reset_token_counters(agent, db):
+        await db.commit()
     out = AgentOut.model_validate(agent).model_dump()
     out["access_level"] = access_level
 

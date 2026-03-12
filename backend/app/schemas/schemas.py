@@ -303,6 +303,7 @@ class ChannelConfigOut(BaseModel):
 class ApprovalRequestOut(BaseModel):
     id: uuid.UUID
     agent_id: uuid.UUID
+    agent_name: str | None = None
     action_type: str
     details: dict
     status: str
