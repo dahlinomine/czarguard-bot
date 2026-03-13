@@ -12,7 +12,7 @@ set -e
 if [ "$(id -u)" = '0' ]; then
     echo "[entrypoint] Detected root user, fixing permissions..."
     # Ensure directories exist and are owned by clawith
-    chown -R clawith:clawith /app/agent_data
+    chown -R clawith:clawith ${AGENT_DATA_DIR}
     
     echo "[entrypoint] Dropping privileges to 'clawith' and re-executing..."
     exec gosu clawith /bin/bash "$0" "$@"
