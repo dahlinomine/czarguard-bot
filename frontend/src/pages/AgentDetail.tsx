@@ -292,7 +292,24 @@ function ToolsManager({ agentId, canManage = false }: { agentId: string; canMana
                                                 )}
                                             </label>
                                             {field.type === 'password' ? (
+                                                <>
                                                 <input type="password" className="form-input" value={configData[field.key] ?? ''} placeholder={field.placeholder || 'Leave blank to use global default'} onChange={e => setConfigData(p => ({ ...p, [field.key]: e.target.value }))} />
+                                                {/* Per-provider help text for auth_code */}
+                                                {field.key === 'auth_code' && (() => {
+                                                    const providerField = configTool.config_schema?.fields?.find((f: any) => f.key === 'email_provider');
+                                                    const selectedProvider = configData['email_provider'] || providerField?.default || '';
+                                                    const providerOption = providerField?.options?.find((o: any) => o.value === selectedProvider);
+                                                    if (!providerOption?.help_text) return null;
+                                                    return (
+                                                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px', lineHeight: '1.5' }}>
+                                                            {providerOption.help_text}
+                                                            {providerOption.help_url && (
+                                                                <> &middot; <a href={providerOption.help_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-primary)', textDecoration: 'none' }}>Setup guide</a></>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })()}
+                                                </>
                                             ) : field.type === 'select' ? (
                                                 <select className="form-input" value={configData[field.key] ?? field.default ?? ''} onChange={e => setConfigData(p => ({ ...p, [field.key]: e.target.value }))}>
                                                     {(field.options || []).map((o: any) => <option key={o.value} value={o.value}>{o.label}</option>)}

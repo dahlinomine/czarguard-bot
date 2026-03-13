@@ -21,7 +21,7 @@ from typing import Optional
 # Preset email provider configurations
 EMAIL_PROVIDERS = {
     "qq": {
-        "label": "QQ邮箱",
+        "label": "QQ Mail",
         "imap_host": "imap.qq.com",
         "imap_port": 993,
         "smtp_host": "smtp.qq.com",
@@ -31,7 +31,7 @@ EMAIL_PROVIDERS = {
         "help_text": "Settings → Account → POP3/IMAP/SMTP → Enable IMAP → Generate authorization code",
     },
     "163": {
-        "label": "163邮箱",
+        "label": "163 Mail",
         "imap_host": "imap.163.com",
         "imap_port": 993,
         "smtp_host": "smtp.163.com",
@@ -61,17 +61,17 @@ EMAIL_PROVIDERS = {
         "help_text": "Microsoft Account → Security → App passwords",
     },
     "qq_enterprise": {
-        "label": "腾讯企业邮箱",
+        "label": "Tencent Enterprise Mail",
         "imap_host": "imap.exmail.qq.com",
         "imap_port": 993,
         "smtp_host": "smtp.exmail.qq.com",
         "smtp_port": 465,
         "smtp_ssl": True,
         "help_url": "https://open.work.weixin.qq.com/help2/pc/18624",
-        "help_text": "企业邮箱 → 设置 → 客户端专用密码 → 生成新密码",
+        "help_text": "Enterprise Mail → Settings → Client-specific password → Generate new password",
     },
     "aliyun": {
-        "label": "阿里企业邮箱",
+        "label": "Alibaba Enterprise Mail",
         "imap_host": "imap.qiye.aliyun.com",
         "imap_port": 993,
         "smtp_host": "smtp.qiye.aliyun.com",
