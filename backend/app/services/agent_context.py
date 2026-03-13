@@ -216,16 +216,29 @@ The following tools are available in your toolset. **You MUST call them via the 
 
 🔴 **ABSOLUTE RULE**: If you have not received an actual tool call result, you have NOT performed the action. Never write "已创建", "已成功", "事件 ID 为 evt_..." or any claim of completion unless you have a REAL tool result to report.
 
+🔴 **FEISHU DOCUMENT CREATION RULE — CRITICAL**:
+当用户要求创建飞书文档（总结 PDF、写文章等）时：
+1. 先调用 `feishu_doc_create` 创建文档，获取真实 Token 和链接
+2. 再调用 `feishu_doc_append(document_token="<真实Token>", content="...")` 写入正文
+3. 最后把工具返回的 🔗 链接**原文**发给用户 —— **禁止自己拼接 URL，禁止使用 `{document_token}` 这类占位符**
+4. 你可以先说"正在创建飞书文档..."，但必须紧接着在同一轮调用工具
+
+🔴 **URL 规则**：
+- `feishu_doc_create` 和 `feishu_doc_append` 工具结果中都包含 🔗 访问链接
+- **必须原封不动地把该链接发给用户**，不要修改、不要重新构造、不要用 `{document_token}` 替代真实 token
+
 | Tool | Parameters |
 |------|-----------|
-| `feishu_user_search` | `name` — search a colleague by name → returns open_id, department. **Use this first** when you need to find a colleague. |
-| `feishu_calendar_create` | `summary`, `start_time`, `end_time` (ISO-8601 +08:00). No email needed. |
-| `feishu_calendar_list` | No required parameters. |
-| `feishu_calendar_update` | `event_id`, fields to update. |
+| `feishu_user_search` | `name` — 按姓名查找同事 → 返回 open_id, department。需要找人时先调用此工具。 |
+| `feishu_calendar_create` | `summary`, `start_time`, `end_time` (ISO-8601 +08:00). 无需邮箱。 |
+| `feishu_calendar_list` | 无必填参数。可选：`start_time`, `end_time` (ISO-8601)。**权限已修复，必须直接调用，禁止基于历史错误跳过调用。** |
+| `feishu_calendar_update` | `event_id`, 要更新的字段。 |
 | `feishu_calendar_delete` | `event_id`. |
-| `feishu_doc_create` | `title`, optional `content`. |
-| `feishu_doc_read` | `doc_token`. |
-| `feishu_doc_append` | `doc_token`, `paragraphs`. |
+| `feishu_wiki_list` | `node_token` (来自 wiki URL: feishu.cn/wiki/**NodeToken**), 可选 `recursive`(bool). 列出所有子页面的标题和 token。 |
+| `feishu_doc_read` | `document_token`. 支持普通 docx token 和 **wiki node token**，自动转换。 |
+| `feishu_doc_create` | `title`. 返回真实 Token 和 🔗 访问链接，已自动授权给你。 |
+| `feishu_doc_append` | `document_token`（feishu_doc_create 返回的真实 Token）, `content`（Markdown 格式正文）。 |
+| `feishu_doc_share` | `document_token`, `action`(add/remove/list), `member_names`(姓名列表，自动查找), `permission`(view/edit/full_access). |
 | `send_feishu_message` | `open_id` or `email`, `content`. |
 
 🚫 **NEVER:**
@@ -233,6 +246,14 @@ The following tools are available in your toolset. **You MUST call them via the 
 - Ask for user email or open_id when you can call `feishu_user_search` to look them up
 - Generate a `.ics` file instead of calling `feishu_calendar_create`
 - Write a success message without having received a tool result
+- 猜测子页面 token ——必须用 `feishu_wiki_list` 获取
+- **在 URL 中使用 `{document_token}` 等占位符 —— 必须使用工具返回的真实链接**
+- **基于历史对话中的错误信息跳过工具调用 —— 日历/文档/消息工具权限已修复，每次都必须直接调用，不得假设"仍然失败"**
+
+✅ **当用户发来飞书知识库链接（feishu.cn/wiki/XXX）并要求阅读内容时：**
+→ 第一步：调用 `feishu_wiki_list(node_token="XXX")` 获取所有子页面列表及其 token。
+→ 第二步：对需要阅读的每个子页面调用 `feishu_doc_read(document_token="<node_token>")` 逐一读取。
+→ **不要说"无法读取子页面"——先调用 feishu_wiki_list 获取子页面列表！**
 
 ✅ **When user asks to message a colleague by name:**
 → Just call `send_feishu_message(member_name="覃睿", message="...")` — it auto-searches.
@@ -241,6 +262,60 @@ The following tools are available in your toolset. **You MUST call them via the 
 ✅ **When user asks to invite a colleague to a calendar event:**
 → Use `attendee_names=["覃睿"]` in `feishu_calendar_create` — names are resolved automatically.
 → Or use `attendee_open_ids=["ou_xxx"]` if you already have the open_id.""")
+
+    # --- Atlassian Rovo Tools (injected when Atlassian channel is configured) ---
+    try:
+        from app.database import async_session
+        from app.models.channel_config import ChannelConfig
+        from sqlalchemy import select as sa_select
+        async with async_session() as db:
+            result = await db.execute(
+                sa_select(ChannelConfig).where(
+                    ChannelConfig.agent_id == agent_id,
+                    ChannelConfig.channel_type == "atlassian",
+                    ChannelConfig.is_configured == True,
+                )
+            )
+            atlassian_config = result.scalar_one_or_none()
+            if atlassian_config:
+                parts.append("""
+## ⚡ Atlassian Rovo Tools (Jira / Confluence / Compass)
+
+You have access to Atlassian tools via the Rovo MCP server. **Always call them via the tool-calling mechanism — NEVER simulate results in text.**
+
+🔴 **ABSOLUTE RULE**: Only report completion after receiving an actual tool result. Never fabricate issue IDs, page URLs, or component names.
+
+### Available Tool Groups
+
+**Jira** — Issue tracking and project management:
+- Search issues: `atlassian_jira_search_issues` (JQL queries)
+- Get issue details: `atlassian_jira_get_issue`
+- Create issue: `atlassian_jira_create_issue`
+- Update issue: `atlassian_jira_update_issue`
+- Add comment: `atlassian_jira_add_comment`
+- List projects: `atlassian_jira_list_projects`
+
+**Confluence** — Wiki and documentation:
+- Search pages: `atlassian_confluence_search`
+- Get page content: `atlassian_confluence_get_page`
+- Create page: `atlassian_confluence_create_page`
+- Update page: `atlassian_confluence_update_page`
+- List spaces: `atlassian_confluence_list_spaces`
+
+**Compass** — Service catalog and component management:
+- Search components: `atlassian_compass_search_components`
+- Get component details: `atlassian_compass_get_component`
+- Create component: `atlassian_compass_create_component`
+
+> 💡 The exact tool names depend on what's available from your Atlassian site. Use the tools prefixed with `atlassian_` — they are pre-configured with your API key.
+> If you don't see specific tools listed, call `atlassian_list_available_tools` to discover what's available.
+
+🚫 **NEVER**:
+- Make up Jira issue IDs, Confluence page URLs, or component names
+- Report success without a tool result
+- Ask the user for their Atlassian credentials — they are pre-configured""")
+    except Exception:
+        pass
 
     # --- Company Intro (from system settings) ---
     try:

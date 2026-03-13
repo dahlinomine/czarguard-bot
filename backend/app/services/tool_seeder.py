@@ -916,3 +916,99 @@ async def seed_builtin_tools():
         await db.commit()
         print("[ToolSeeder] Builtin tools seeded")
 
+
+# ── Atlassian Rovo MCP Server Integration ──────────────────────────────────
+
+ATLASSIAN_ROVO_MCP_URL = "https://mcp.atlassian.com/v1/mcp"
+
+ATLASSIAN_ROVO_CONFIG_TOOL = {
+    "name": "atlassian_rovo",
+    "display_name": "Atlassian Rovo (Jira / Confluence / Compass)",
+    "description": (
+        "Connect to Atlassian Rovo MCP Server to access Jira, Confluence, and Compass. "
+        "Configure your API key to enable Jira issue management, Confluence page creation, "
+        "and Compass component queries."
+    ),
+    "category": "atlassian",
+    "icon": "🔷",
+    "is_default": False,
+    "parameters_schema": {"type": "object", "properties": {}},
+    "config": {"api_key": ""},
+    "config_schema": {
+        "fields": [
+            {
+                "key": "api_key",
+                "label": "Atlassian API Key",
+                "type": "password",
+                "default": "",
+                "placeholder": "ATSTT3x... (service account key) or Basic base64(email:token)",
+                "description": (
+                    "Service account API key (Bearer) or base64-encoded email:api_token (Basic). "
+                    "Get your API key from id.atlassian.com/manage-profile/security/api-tokens"
+                ),
+            },
+        ]
+    },
+}
+
+
+async def seed_atlassian_rovo_config():
+    """Ensure the Atlassian Rovo platform config tool exists in the database.
+
+    If the env var ATLASSIAN_API_KEY is set, it will be written into the tool config
+    so the platform is immediately ready without manual UI setup.
+    """
+    import os
+    env_key = os.environ.get("ATLASSIAN_API_KEY", "").strip()
+
+    async with async_session() as db:
+        t = ATLASSIAN_ROVO_CONFIG_TOOL
+        result = await db.execute(select(Tool).where(Tool.name == t["name"]))
+        existing = result.scalar_one_or_none()
+        if not existing:
+            initial_config = dict(t["config"])
+            if env_key:
+                initial_config["api_key"] = env_key
+            tool = Tool(
+                name=t["name"],
+                display_name=t["display_name"],
+                description=t["description"],
+                type="mcp_config",
+                category=t["category"],
+                icon=t["icon"],
+                is_default=t["is_default"],
+                parameters_schema=t["parameters_schema"],
+                config=initial_config,
+                config_schema=t["config_schema"],
+                mcp_server_url=ATLASSIAN_ROVO_MCP_URL,
+                mcp_server_name="Atlassian Rovo",
+            )
+            db.add(tool)
+            await db.commit()
+            print("[ToolSeeder] Created Atlassian Rovo config tool")
+        else:
+            updated = False
+            if existing.config_schema != t["config_schema"]:
+                existing.config_schema = t["config_schema"]
+                updated = True
+            if existing.mcp_server_url != ATLASSIAN_ROVO_MCP_URL:
+                existing.mcp_server_url = ATLASSIAN_ROVO_MCP_URL
+                updated = True
+            # Write env key into DB if not already stored
+            if env_key and (not existing.config or not existing.config.get("api_key")):
+                existing.config = {**(existing.config or {}), "api_key": env_key}
+                updated = True
+            if updated:
+                await db.commit()
+                print("[ToolSeeder] Updated Atlassian Rovo config tool")
+
+
+async def get_atlassian_api_key() -> str:
+    """Read the Atlassian API key from the platform config tool."""
+    async with async_session() as db:
+        result = await db.execute(select(Tool).where(Tool.name == "atlassian_rovo"))
+        tool = result.scalar_one_or_none()
+        if tool and tool.config:
+            return tool.config.get("api_key", "")
+    return ""
+

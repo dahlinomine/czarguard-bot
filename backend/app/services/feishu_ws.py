@@ -24,29 +24,60 @@ class FeishuWSManager:
         self._clients: Dict[uuid.UUID, ws.Client] = {}
         # Tasks for reconnection or ping loops if we want to cancel them later
         self._tasks: Dict[uuid.UUID, asyncio.Task] = {}
-        # Reference to the main asyncio event loop, set during start_all()
-        self._main_loop: asyncio.AbstractEventLoop | None = None
 
     def _create_event_handler(self, agent_id: uuid.UUID) -> lark.EventDispatcherHandler:
         """Create an event dispatcher for a specific agent."""
 
         def handle_message(data: Any) -> None:
-            """Handle im.message.receive_v1 events from Feishu WebSocket.
-
-            This callback may be invoked from a non-async SDK thread, so we
-            dispatch to the main event loop via run_coroutine_threadsafe.
-            """
-            if self._main_loop is None or self._main_loop.is_closed():
-                logger.error("[Feishu WS] Main event loop not available, dropping event")
-                return
-
+            """Handle im.message.receive_v1 events from Feishu WebSocket."""
             try:
-                asyncio.run_coroutine_threadsafe(
-                    self._async_handle_message(agent_id, data),
-                    self._main_loop,
-                )
-            except Exception as e:
-                logger.error(f"[Feishu WS] Could not dispatch event to main loop: {e}", exc_info=True)
+                # The data object carries the raw event body
+                raw_body = getattr(data, "raw_body", None)
+                if not raw_body:
+                    # Some SDK versions pass the dict directly
+                    if isinstance(data, dict):
+                        body_dict = data
+                    else:
+                        # Handle lark_oapi.event.custom.CustomizedEvent
+                        body_dict = {}
+                        if hasattr(data, "header"):
+                            header_obj = data.header
+                            body_dict["header"] = vars(header_obj) if hasattr(header_obj, "__dict__") else {
+                                "event_type": getattr(header_obj, "event_type", "im.message.receive_v1"),
+                                "event_id": getattr(header_obj, "event_id", ""),
+                                "create_time": getattr(header_obj, "create_time", "")
+                            }
+                            # Ensure event_type is present as it's required downstream
+                            if "event_type" not in body_dict["header"]:
+                                body_dict["header"]["event_type"] = getattr(header_obj, "event_type", "im.message.receive_v1")
+                        else:
+                            body_dict["header"] = {"event_type": "im.message.receive_v1"}
+
+                        if hasattr(data, "event"):
+                            body_dict["event"] = data.event
+                        elif hasattr(data, "content") and isinstance(getattr(data, "content"), str):
+                            import json
+                            try:
+                                body_dict["event"] = json.loads(data.content)
+                            except json.JSONDecodeError:
+                                body_dict["event"] = {"content": data.content}
+                        
+                        if not hasattr(data, "header") and not hasattr(data, "event"):
+                            logger.warning(f"[Feishu WS] Unexpected event data type with no recognizable fields: {type(data)}")
+                            return
+                else:
+                    body_dict = json.loads(raw_body.decode("utf-8"))
+
+                loop = asyncio.get_running_loop()
+                loop.create_task(self._async_handle_message(agent_id, data))
+            except RuntimeError:
+                try:
+                    # If no running loop in this thread, try to find the main event loop
+                    # This is a heuristic and might need adjustment depending on the exact async framework setup
+                    main_loop = [t for t in asyncio.all_tasks() if t.get_name() != "feishu-ws"][0].get_loop()
+                    asyncio.run_coroutine_threadsafe(self._async_handle_message(agent_id, data), main_loop)
+                except Exception as e:
+                    logger.error(f"[Feishu WS] Could not dispatch event to main loop: {e}", exc_info=True)
 
         dispatcher = (
             lark.EventDispatcherHandler.builder("", "")
@@ -120,10 +151,6 @@ class FeishuWSManager:
             logger.warning(f"[Feishu WS] Missing app_id or app_secret for {agent_id}, skipping")
             return
 
-        # Ensure we have a reference to the event loop for thread-safe dispatch
-        if self._main_loop is None:
-            self._main_loop = asyncio.get_running_loop()
-
         logger.info(f"[Feishu WS] Starting async WS client for agent {agent_id} (App ID: {app_id})")
 
         # Stop existing client task if any
@@ -187,9 +214,6 @@ class FeishuWSManager:
 
     async def start_all(self):
         """Start WS clients for all configured Feishu agents."""
-        # Capture the running event loop so SDK callbacks (which run in
-        # separate threads) can safely dispatch coroutines back here.
-        self._main_loop = asyncio.get_running_loop()
         logger.info("[Feishu WS] Initializing all active Feishu channels...")
         async with async_session() as db:
             result = await db.execute(

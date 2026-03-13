@@ -57,7 +57,10 @@ async def configure_channel(
         raise HTTPException(status_code=403, detail="Only creator can configure channel")
 
     # Check existing
-    result = await db.execute(select(ChannelConfig).where(ChannelConfig.agent_id == agent_id))
+    result = await db.execute(select(ChannelConfig).where(
+        ChannelConfig.agent_id == agent_id,
+        ChannelConfig.channel_type == "feishu",
+    ))
     existing = result.scalar_one_or_none()
     if existing:
         existing.app_id = data.app_id

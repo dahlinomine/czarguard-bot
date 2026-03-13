@@ -435,8 +435,41 @@ AGENT_TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "feishu_wiki_list",
+            "description": (
+                "List all sub-pages (child nodes) of a Feishu Wiki (知识库) page. "
+                "Works with wiki URLs like 'https://xxx.feishu.cn/wiki/NodeToken'. "
+                "Use this when a wiki page has child pages you need to explore. "
+                "Returns titles, node_tokens, and obj_tokens for each sub-page. "
+                "Each sub-page can then be read with feishu_doc_read using its node_token."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "node_token": {
+                        "type": "string",
+                        "description": "Wiki node token from the URL, e.g. 'HrGawgXxLiqoS5kT6pUczya3nEc' from 'https://xxx.feishu.cn/wiki/HrGawgXxLiqoS5kT6pUczya3nEc'",
+                    },
+                    "recursive": {
+                        "type": "boolean",
+                        "description": "If true, also list sub-pages of sub-pages (up to 2 levels deep). Default false.",
+                    },
+                },
+                "required": ["node_token"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "feishu_doc_read",
-            "description": "Read the text content of a Feishu document (Docx). Provide the document token from its URL. E.g. URL is 'https://xxx.feishu.cn/docx/DxYzAbCd', token is 'DxYzAbCd'.",
+            "description": (
+                "Read the text content of a Feishu document or Wiki page. "
+                "Works with both regular docx URLs (https://xxx.feishu.cn/docx/Token) "
+                "and Wiki page URLs (https://xxx.feishu.cn/wiki/Token). "
+                "Automatically handles wiki node tokens. "
+                "If the page has sub-pages, use feishu_wiki_list to list them."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -500,17 +533,21 @@ AGENT_TOOLS = [
         "type": "function",
         "function": {
             "name": "feishu_calendar_list",
-            "description": "List Feishu calendar events. Call this DIRECTLY — no email or authorization needed.",
+            "description": "查询飞书日历。**自动读取当前对话用户的真实忙碌时段（freebusy）**，同时列出 bot 创建的日程。用于查询某人是否有空、安排日程时避开冲突。",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "start_time": {
                         "type": "string",
-                        "description": "Range start, ISO 8601, e.g. '2026-03-10T00:00:00+08:00'. Default: now.",
+                        "description": "查询起始时间，ISO 8601 格式，例如 '2026-03-13T00:00:00+08:00'。默认：当前时间。",
                     },
                     "end_time": {
                         "type": "string",
-                        "description": "Range end, ISO 8601. Default: 7 days from now.",
+                        "description": "查询截止时间，ISO 8601 格式。默认：7天后。",
+                    },
+                    "user_open_id": {
+                        "type": "string",
+                        "description": "要查询 freebusy 的用户 open_id。不填则自动使用当前对话发送者。",
                     },
                     "max_results": {
                         "type": "integer",
@@ -605,6 +642,48 @@ AGENT_TOOLS = [
                     "event_id": {"type": "string", "description": "Event ID to delete"},
                 },
                 "required": ["user_email", "event_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "feishu_doc_share",
+            "description": (
+                "Manage Feishu document collaborators and permissions. "
+                "Can add or remove collaborators with viewer/editor/full_access roles, "
+                "or get the current collaborator list. "
+                "Accepts colleague names (auto-searched) or open_ids directly."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "document_token": {
+                        "type": "string",
+                        "description": "Feishu document token (from feishu_doc_create or doc URL)",
+                    },
+                    "action": {
+                        "type": "string",
+                        "enum": ["add", "remove", "list"],
+                        "description": "'add' to grant access, 'remove' to revoke, 'list' to view current collaborators",
+                    },
+                    "member_names": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Colleague names to add/remove, e.g. ['覃睿', '张三']. Auto-searched.",
+                    },
+                    "member_open_ids": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Feishu open_ids to add/remove directly (if already known).",
+                    },
+                    "permission": {
+                        "type": "string",
+                        "enum": ["view", "edit", "full_access"],
+                        "description": "Permission level: 'view' (read-only), 'edit' (can edit), 'full_access' (can manage). Default: 'edit'",
+                    },
+                },
+                "required": ["document_token", "action"],
             },
         },
     },
@@ -745,9 +824,11 @@ _ALWAYS_INCLUDE_CORE = {
 _FEISHU_TOOL_NAMES = {
     "send_feishu_message",
     "feishu_user_search",
+    "feishu_wiki_list",
     "feishu_doc_read",
     "feishu_doc_create",
     "feishu_doc_append",
+    "feishu_doc_share",
     "feishu_calendar_list",
     "feishu_calendar_create",
     "feishu_calendar_update",
@@ -852,6 +933,11 @@ async def ensure_workspace(agent_id: uuid.UUID) -> Path:
     # Ensure shared enterprise_info directory exists
     enterprise_dir = WORKSPACE_ROOT / "enterprise_info"
     enterprise_dir.mkdir(parents=True, exist_ok=True)
+    (enterprise_dir / "knowledge_base").mkdir(exist_ok=True)
+    # Create default company profile if missing
+    profile_path = enterprise_dir / "company_profile.md"
+    if not profile_path.exists():
+        profile_path.write_text("# Company Profile\n\n_Edit company information here. All digital employees can access this._\n\n## Basic Info\n- Company Name:\n- Industry:\n- Founded:\n\n## Business Overview\n\n## Organization Structure\n\n## Company Culture\n", encoding="utf-8")
 
     # Migrate: move root-level memory.md into memory/ directory
     if (ws / "memory.md").exists() and not (ws / "memory" / "memory.md").exists():
@@ -1025,6 +1111,8 @@ async def execute_tool(
         elif tool_name == "import_mcp_server":
             result = await _import_mcp_server(agent_id, arguments)
         # ── Feishu Document Tools ──
+        elif tool_name == "feishu_wiki_list":
+            result = await _feishu_wiki_list(agent_id, arguments)
         elif tool_name == "feishu_doc_read":
             result = await _feishu_doc_read(agent_id, arguments)
         elif tool_name == "feishu_doc_create":
@@ -1032,6 +1120,8 @@ async def execute_tool(
         elif tool_name == "feishu_doc_append":
             result = await _feishu_doc_append(agent_id, arguments)
         # ── Feishu Calendar Tools ──
+        elif tool_name == "feishu_doc_share":
+            result = await _feishu_doc_share(agent_id, arguments)
         elif tool_name == "feishu_user_search":
             result = await _feishu_user_search(agent_id, arguments)
         elif tool_name == "feishu_calendar_list":
@@ -1402,7 +1492,17 @@ async def _execute_mcp_tool(tool_name: str, arguments: dict, agent_id=None) -> s
             return await _execute_via_smithery_connect(mcp_url, mcp_name, arguments, merged_config, agent_id=agent_id)
 
         # Direct MCP call for non-Smithery servers
-        client = MCPClient(mcp_url)
+        # Priority for API key:
+        # 1. Per-agent tool config (api_key / atlassian_api_key)
+        # 2. Agent's Atlassian channel config (for atlassian_* tools)
+        direct_api_key = merged_config.get("api_key") or merged_config.get("atlassian_api_key")
+        if not direct_api_key and tool.mcp_server_name == "Atlassian Rovo":
+            try:
+                from app.api.atlassian import get_atlassian_api_key_for_agent
+                direct_api_key = await get_atlassian_api_key_for_agent(agent_id)
+            except Exception:
+                pass
+        client = MCPClient(mcp_url, api_key=direct_api_key)
         return await client.call_tool(mcp_name, arguments)
 
     except Exception as e:
@@ -3126,6 +3226,107 @@ def _iso_to_ts(iso_str: str) -> float:
 
 # ─── Feishu Document Tools ────────────────────────────────────────────────────
 
+# ─── Feishu Wiki Tools ───────────────────────────────────────────────────────
+
+async def _feishu_wiki_get_node(token_str: str, auth_token: str) -> dict | None:
+    """Call wiki get_node API to resolve a wiki node token → {obj_token, space_id, has_child, title}.
+    Returns None if the token is not a wiki node."""
+    import httpx
+    async with httpx.AsyncClient(timeout=5) as client:
+        r = await client.get(
+            "https://open.feishu.cn/open-apis/wiki/v2/spaces/get_node",
+            headers={"Authorization": f"Bearer {auth_token}"},
+            params={"token": token_str, "obj_type": "wiki"},
+        )
+    d = r.json()
+    if d.get("code") != 0:
+        return None
+    node = d.get("data", {}).get("node", {})
+    return {
+        "obj_token": node.get("obj_token", ""),
+        "space_id": node.get("origin_space_id", node.get("space_id", "")),
+        "has_child": node.get("has_child", False),
+        "title": node.get("title", ""),
+        "node_token": node.get("node_token", token_str),
+    }
+
+
+async def _feishu_wiki_list(agent_id: uuid.UUID, arguments: dict) -> str:
+    """List sub-pages of a Feishu Wiki node, optionally recursive."""
+    import httpx
+
+    node_token = (arguments.get("node_token") or "").strip()
+    recursive = bool(arguments.get("recursive", False))
+
+    if not node_token:
+        return "❌ Missing required argument 'node_token'"
+
+    creds = await _get_feishu_token(agent_id)
+    if not creds:
+        return "❌ Agent has no Feishu channel configured."
+    _, token = creds
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Resolve node → space_id
+    node_info = await _feishu_wiki_get_node(node_token, token)
+    if not node_info:
+        return (
+            f"❌ 无法解析 Wiki 节点 `{node_token}`。\n"
+            "请确认 token 来自飞书知识库 URL（https://xxx.feishu.cn/wiki/NodeToken），"
+            "而非普通文档 URL。"
+        )
+
+    space_id = node_info["space_id"]
+    if not space_id:
+        return f"❌ 无法获取知识库 space_id，请检查 token 是否正确。"
+
+    async def _list_children(parent_token: str, depth: int) -> list[dict]:
+        """Return flat list of {title, node_token, obj_token, has_child, depth}."""
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                f"https://open.feishu.cn/open-apis/wiki/v2/spaces/{space_id}/nodes",
+                headers=headers,
+                params={"parent_node_token": parent_token, "page_size": 50},
+            )
+        data = resp.json()
+        if data.get("code") != 0:
+            return []
+        items = data.get("data", {}).get("items", [])
+        result = []
+        for item in items:
+            entry = {
+                "title": item.get("title", "(无标题)"),
+                "node_token": item.get("node_token", ""),
+                "obj_token": item.get("obj_token", ""),
+                "has_child": item.get("has_child", False),
+                "depth": depth,
+            }
+            result.append(entry)
+            if recursive and entry["has_child"] and depth < 2:
+                children = await _list_children(entry["node_token"], depth + 1)
+                result.extend(children)
+        return result
+
+    pages = await _list_children(node_token, 0)
+    if not pages:
+        return f"📂 Wiki 页面 `{node_token}` 下没有子页面。"
+
+    lines = [f"📂 Wiki 页面 `{node_token}` 的子页面（共 {len(pages)} 个）：\n"]
+    for p in pages:
+        indent = "  " * p["depth"]
+        child_hint = " _(有子页面)_" if p["has_child"] else ""
+        lines.append(
+            f"{indent}• **{p['title']}**{child_hint}\n"
+            f"{indent}  node_token: `{p['node_token']}`\n"
+            f"{indent}  obj_token: `{p['obj_token']}`"
+        )
+    lines.append(
+        "\n💡 用 `feishu_doc_read(document_token=\"<node_token>\")` 读取每个子页面的内容。"
+        "\n   对有子页面的条目，再次调用 `feishu_wiki_list(node_token=\"...\")` 继续展开。"
+    )
+    return "\n".join(lines)
+
+
 async def _feishu_doc_read(agent_id: uuid.UUID, arguments: dict) -> str:
     import httpx
     document_token = arguments.get("document_token", "").strip()
@@ -3138,9 +3339,21 @@ async def _feishu_doc_read(agent_id: uuid.UUID, arguments: dict) -> str:
         return "❌ Agent has no Feishu channel configured."
     _, token = creds
 
+    # Auto-detect wiki node tokens: try get_node first and use obj_token for reading
+    read_token = document_token
+    wiki_hint = ""
+    node_info = await _feishu_wiki_get_node(document_token, token)
+    if node_info and node_info.get("obj_token"):
+        read_token = node_info["obj_token"]
+        if node_info.get("has_child"):
+            wiki_hint = (
+                "\n\n> 💡 这是一个 Wiki 目录页，它有多个子页面。"
+                "使用 `feishu_wiki_list` 工具（传入相同的 node_token）可以查看所有子页面列表。"
+            )
+
     async with httpx.AsyncClient(timeout=20) as client:
         resp = await client.get(
-            f"https://open.feishu.cn/open-apis/docx/v1/documents/{document_token}/raw_content",
+            f"https://open.feishu.cn/open-apis/docx/v1/documents/{read_token}/raw_content",
             headers={"Authorization": f"Bearer {token}"},
             params={"lang": 0},
         )
@@ -3151,14 +3364,14 @@ async def _feishu_doc_read(agent_id: uuid.UUID, arguments: dict) -> str:
 
     content = data.get("data", {}).get("content", "")
     if not content:
-        return f"📄 Document '{document_token}' is empty."
+        return f"📄 Document '{document_token}' is empty.{wiki_hint}"
 
     truncated = ""
     if len(content) > max_chars:
         content = content[:max_chars]
         truncated = f"\n\n_(Truncated to {max_chars} chars)_"
 
-    return f"📄 **Document content** (`{document_token}`):\n\n{content}{truncated}"
+    return f"📄 **Document content** (`{document_token}`):\n\n{content}{truncated}{wiki_hint}"
 
 
 async def _feishu_doc_create(agent_id: uuid.UUID, arguments: dict) -> str:
@@ -3171,6 +3384,7 @@ async def _feishu_doc_create(agent_id: uuid.UUID, arguments: dict) -> str:
     if not creds:
         return "❌ Agent has no Feishu channel configured."
     _, token = creds
+    headers = {"Authorization": f"Bearer {token}"}
 
     body: dict = {"title": title}
     if arguments.get("folder_token"):
@@ -3180,7 +3394,7 @@ async def _feishu_doc_create(agent_id: uuid.UUID, arguments: dict) -> str:
         resp = await client.post(
             "https://open.feishu.cn/open-apis/docx/v1/documents",
             json=body,
-            headers={"Authorization": f"Bearer {token}"},
+            headers=headers,
         )
 
     data = resp.json()
@@ -3188,12 +3402,199 @@ async def _feishu_doc_create(agent_id: uuid.UUID, arguments: dict) -> str:
         return f"❌ Failed to create document: {data.get('msg')} (code {data.get('code')})"
 
     doc_token = data.get("data", {}).get("document", {}).get("document_id", "")
+    doc_url = f"https://bytedance.larkoffice.com/docx/{doc_token}"
+
+    # Auto-share with the Feishu sender so they can access the document
+    share_note = ""
+    try:
+        sender_open_id = channel_feishu_sender_open_id.get(None)
+        if sender_open_id and doc_token:
+            async with httpx.AsyncClient(timeout=10) as client:
+                share_resp = await client.post(
+                    f"https://open.feishu.cn/open-apis/drive/v1/permissions/{doc_token}/members",
+                    params={"type": "docx", "need_notification": "false"},
+                    json={
+                        "member_type": "openid",
+                        "member_id": sender_open_id,
+                        "perm": "full_access",
+                    },
+                    headers=headers,
+                )
+            sr = share_resp.json()
+            if sr.get("code") == 0:
+                share_note = "\n✅ 已自动为你开通访问权限。"
+            else:
+                share_note = f"\n⚠️ 自动授权失败（{sr.get('code')}），你可能需要手动在飞书前端打开文档。"
+    except Exception as _e:
+        share_note = f"\n⚠️ 自动授权异常: {_e}"
+
     return (
-        f"✅ Document created!\n"
-        f"**Title**: {title}\n"
-        f"**Token**: `{doc_token}`\n"
-        f"**URL**: https://bytedance.larkoffice.com/docx/{doc_token}"
+        f"✅ 文档创建成功！{share_note}\n"
+        f"标题：{title}\n"
+        f"Token：{doc_token}\n"
+        f"🔗 访问链接：{doc_url}\n"
+        f"下一步：调用 feishu_doc_append(document_token=\"{doc_token}\", content=\"...\") 写入正文内容。"
     )
+
+
+def _parse_inline_markdown(text: str) -> list[dict]:
+    """Parse inline markdown (bold, italic, strikethrough) into Feishu text_run elements.
+    Note: inline `code` is deliberately NOT rendered as inline_code style because
+    Feishu's API rejects inline_code inside heading blocks (field validation error).
+    Instead, backtick-wrapped text is returned as plain text.
+    Empty text_element_style dicts are intentionally omitted to avoid API validation errors.
+    """
+    import re as _re
+
+    def _make_run(content: str, style: dict | None = None) -> dict:
+        run: dict = {"content": content}
+        if style:
+            run["text_element_style"] = style
+        return {"text_run": run}
+
+    elements = []
+    # Only handle **bold**, *italic*, ~~strikethrough~~; backticks become plain text
+    pattern = r'(\*\*(.+?)\*\*|\*(.+?)\*|~~(.+?)~~|`(.+?)`)'
+    pos = 0
+    for m in _re.finditer(pattern, text):
+        if m.start() > pos:
+            elements.append(_make_run(text[pos:m.start()]))
+        raw = m.group(0)
+        if raw.startswith("**"):
+            elements.append(_make_run(m.group(2), {"bold": True}))
+        elif raw.startswith("~~"):
+            elements.append(_make_run(m.group(4), {"strikethrough": True}))
+        elif raw.startswith("`"):
+            # Render as plain text to avoid inline_code validation issues in headings
+            elements.append(_make_run(m.group(5)))
+        else:
+            elements.append(_make_run(m.group(3), {"italic": True}))
+        pos = m.end()
+    if pos < len(text):
+        elements.append(_make_run(text[pos:]))
+    if not elements:
+        elements.append(_make_run(text or " "))
+    return elements
+
+
+def _markdown_to_feishu_blocks(markdown: str) -> list[dict]:
+    """Convert Markdown text to Feishu docx v1 block list.
+
+    Supported:
+      # / ## / ### / ####  → heading1-4 (block_type 3-6)
+      - / * / + text       → bullet      (block_type 12)
+      1. text              → ordered     (block_type 13)
+      > text               → quote       (block_type 15)
+      --- / ***            → divider     (block_type 22)
+      ``` ... ```          → code block  (block_type 14)
+      plain text           → text        (block_type 2)
+      inline **bold** *italic* `code` ~~strike~~  → text_element_style
+    """
+    import re as _re
+
+    _HEADING_BLOCK = {1: (3, "heading1"), 2: (4, "heading2"),
+                      3: (5, "heading3"), 4: (6, "heading4")}
+
+    def _text_block(bt: int, key: str, line: str) -> dict:
+        # Omit "style" entirely to avoid Feishu field validation errors on empty style dicts
+        return {
+            "block_type": bt,
+            key: {"elements": _parse_inline_markdown(line)},
+        }
+
+    blocks: list[dict] = []
+    lines = markdown.splitlines()
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+
+        # ── Code fence ──────────────────────────────────────────────────────
+        if line.strip().startswith("```"):
+            lang = line.strip()[3:].strip()
+            code_lines = []
+            i += 1
+            while i < len(lines) and not lines[i].strip().startswith("```"):
+                code_lines.append(lines[i])
+                i += 1
+            blocks.append({
+                "block_type": 14,
+                "code": {
+                    "elements": [{"text_run": {"content": "\n".join(code_lines)}}],
+                    "style": {"language": 1 if not lang else
+                              {"python": 49, "javascript": 22, "js": 22,
+                               "typescript": 56, "ts": 56, "bash": 4, "sh": 4,
+                               "sql": 53, "java": 21, "go": 17, "rust": 51,
+                               "json": 25, "yaml": 60, "html": 19, "css": 10,
+                               }.get(lang.lower(), 1)},
+                },
+            })
+            i += 1
+            continue
+
+        # ── Divider ──────────────────────────────────────────────────────────
+        if _re.fullmatch(r'[-*_]{3,}', line.strip()):
+            # block_type 22 = Divider; no extra fields allowed (empty dict causes validation error)
+            blocks.append({"block_type": 22})
+            i += 1
+            continue
+
+        # ── Headings ─────────────────────────────────────────────────────────
+        hm = _re.match(r'^(#{1,4})\s+(.*)', line)
+        if hm:
+            level = min(len(hm.group(1)), 4)
+            bt, key = _HEADING_BLOCK[level]
+            blocks.append(_text_block(bt, key, hm.group(2)))
+            i += 1
+            continue
+
+        # ── Bullet list ──────────────────────────────────────────────────────
+        if _re.match(r'^[\-\*\+]\s+', line):
+            text = _re.sub(r'^[\-\*\+]\s+', '', line)
+            blocks.append(_text_block(12, "bullet", text))
+            i += 1
+            continue
+
+        # ── Ordered list ─────────────────────────────────────────────────────
+        if _re.match(r'^\d+\.\s+', line):
+            text = _re.sub(r'^\d+\.\s+', '', line)
+            blocks.append(_text_block(13, "ordered", text))
+            i += 1
+            continue
+
+        # ── Blockquote ───────────────────────────────────────────────────────
+        if line.startswith("> "):
+            blocks.append(_text_block(15, "quote", line[2:]))
+            i += 1
+            continue
+
+        # ── Empty line → empty text block ────────────────────────────────────
+        if line.strip() == "":
+            blocks.append({
+                "block_type": 2,
+                "text": {"elements": [{"text_run": {"content": " "}}]},
+            })
+            i += 1
+            continue
+
+        # ── Markdown table separator line (|---|---| ) → skip ───────────────
+        if _re.match(r'^\|[\s\-:]+(\|[\s\-:]+)*\|?\s*$', line.strip()):
+            i += 1
+            continue
+
+        # ── Markdown table row → plain text ──────────────────────────────────
+        if line.strip().startswith("|") and line.strip().endswith("|"):
+            # Strip pipe separators and render each cell as plain text
+            cells = [c.strip() for c in line.strip().strip("|").split("|")]
+            cell_text = "  |  ".join(c for c in cells if c)
+            blocks.append(_text_block(2, "text", cell_text))
+            i += 1
+            continue
+
+        # ── Plain text (with inline formatting) ──────────────────────────────
+        blocks.append(_text_block(2, "text", line))
+        i += 1
+
+    return blocks
 
 
 async def _feishu_doc_append(agent_id: uuid.UUID, arguments: dict) -> str:
@@ -3211,9 +3612,13 @@ async def _feishu_doc_append(agent_id: uuid.UUID, arguments: dict) -> str:
     _, token = creds
     headers = {"Authorization": f"Bearer {token}"}
 
+    # For wiki node tokens, use the obj_token for the docx API
+    node_info = await _feishu_wiki_get_node(document_token, token)
+    docx_token = node_info["obj_token"] if (node_info and node_info.get("obj_token")) else document_token
+
     async with httpx.AsyncClient(timeout=20) as client:
         meta = (await client.get(
-            f"https://open.feishu.cn/open-apis/docx/v1/documents/{document_token}",
+            f"https://open.feishu.cn/open-apis/docx/v1/documents/{docx_token}",
             headers=headers,
         )).json()
         if meta.get("code") != 0:
@@ -3221,26 +3626,13 @@ async def _feishu_doc_append(agent_id: uuid.UUID, arguments: dict) -> str:
 
         body_block_id = (
             meta.get("data", {}).get("document", {}).get("body", {}).get("block_id")
-            or document_token
+            or docx_token
         )
 
-        # block_type 2 = text paragraph in Feishu docx v1 API.
-        # The block key must be "text" (not "paragraph"), and elements must NOT
-        # have a top-level "type" field — only the inner text_run object.
-        def _make_block(line: str) -> dict:
-            text = line or " "
-            return {
-                "block_type": 2,
-                "text": {
-                    "elements": [{"text_run": {"content": text}}],
-                    "style": {},
-                },
-            }
-
-        children = [_make_block(line) for line in content.split("\n")]
+        children = _markdown_to_feishu_blocks(content)
 
         result = (await client.post(
-            f"https://open.feishu.cn/open-apis/docx/v1/documents/{document_token}/blocks/{body_block_id}/children",
+            f"https://open.feishu.cn/open-apis/docx/v1/documents/{docx_token}/blocks/{body_block_id}/children",
             json={"children": children, "index": -1},
             headers=headers,
         )).json()
@@ -3248,17 +3640,205 @@ async def _feishu_doc_append(agent_id: uuid.UUID, arguments: dict) -> str:
     if result.get("code") != 0:
         return f"❌ Failed to append: {result.get('msg')} (code {result.get('code')})"
 
+    doc_url = f"https://bytedance.larkoffice.com/docx/{docx_token}"
     return (
-        f"✅ Appended {len(children)} paragraph(s) to `{document_token}`.\n"
-        f"View: https://bytedance.larkoffice.com/docx/{document_token}"
+        f"✅ 已写入 {len(children)} 个段落到文档。\n"
+        f"🔗 文档直链（原文发给用户，勿修改）：{doc_url}"
     )
+
+
+# ─── Feishu Document Share ────────────────────────────────────────────────────
+
+async def _feishu_doc_share(agent_id: uuid.UUID, arguments: dict) -> str:
+    """Manage Feishu document collaborators.
+    Automatically handles both regular docx documents (Drive permissions API)
+    and Wiki node documents (Wiki space members API).
+    """
+    import httpx
+    import re as _re
+
+    document_token = (arguments.get("document_token") or "").strip()
+    action = (arguments.get("action") or "list").strip()
+    permission = (arguments.get("permission") or "edit").strip()
+
+    if not document_token:
+        return "❌ Missing required argument 'document_token'"
+
+    creds = await _get_feishu_token(agent_id)
+    if not creds:
+        return "❌ Agent has no Feishu channel configured."
+    _, token = creds
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # ── Detect if this is a Wiki node token ─────────────────────────────────
+    node_info = await _feishu_wiki_get_node(document_token, token)
+    is_wiki = node_info is not None
+    space_id = node_info.get("space_id", "") if node_info else ""
+    obj_token = node_info.get("obj_token", "") if node_info else ""
+
+    # Permission level mapping: Feishu API uses "view" / "edit" / "full_access"
+    api_perm = {"view": "view", "edit": "edit", "full_access": "full_access"}.get(permission, "edit")
+    # Wiki space role mapping: only "admin" / "member" are valid roles
+    wiki_role = "admin" if api_perm in ("edit", "full_access") else "member"
+
+    # ── LIST collaborators ────────────────────────────────────────────────────
+    if action == "list":
+        use_token = obj_token if (is_wiki and obj_token) else document_token
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                f"https://open.feishu.cn/open-apis/drive/v1/permissions/{use_token}/members",
+                params={"type": "docx"},
+                headers=headers,
+            )
+        data = resp.json()
+        if data.get("code") != 0:
+            _c = data.get("code")
+            if _c == 1063003 and is_wiki:
+                return (
+                    f"ℹ️ 文档 `{document_token}` 是知识库页面，其权限由知识库空间统一管理。\n"
+                    "知识库空间 ID：`" + space_id + "`\n"
+                    "请直接在飞书知识库中管理成员权限。"
+                )
+            if _c in (99991672, 99991668):
+                return (
+                    f"❌ 权限不足（code {_c}）\n"
+                    "需要在飞书开放平台开通：\n"
+                    "• drive:drive（云文档权限管理）"
+                )
+            return f"❌ 获取协作者列表失败：{data.get('msg')} (code {_c})"
+
+        members = data.get("data", {}).get("items", [])
+        if not members:
+            return f"📄 文档 `{document_token}` 当前没有其他协作者。"
+
+        lines = [f"📄 文档 `{document_token}` 的协作者列表（共 {len(members)} 人）：\n"]
+        for m in members:
+            perm = m.get("perm", "")
+            member_type = m.get("member_type", "")
+            member_id = m.get("member_id", "")
+            _type_label = {"openid": "用户", "openchat": "群组", "opendepartmentid": "部门"}.get(member_type, member_type)
+            lines.append(f"• {_type_label} `{member_id}` | 权限: **{perm}**")
+        return "\n".join(lines)
+
+    # ── ADD / REMOVE collaborators ─────────────────────────────────────────────
+    member_names: list[str] = list(arguments.get("member_names") or [])
+    member_open_ids: list[str] = list(arguments.get("member_open_ids") or [])
+
+    if not member_names and not member_open_ids:
+        return "❌ 请提供 member_names（姓名列表）或 member_open_ids（open_id 列表）"
+
+    # Resolve names → open_ids
+    resolved: list[tuple[str, str]] = []  # (display_name, open_id)
+    for name in member_names:
+        sr = await _feishu_user_search(agent_id, {"name": name})
+        m = _re.search(r'open_id: `(ou_[A-Za-z0-9]+)`', sr)
+        if m:
+            resolved.append((name, m.group(1)))
+        else:
+            resolved.append((name, ""))
+
+    for oid in member_open_ids:
+        if oid:
+            resolved.append((oid, oid))
+
+    results = []
+    async with httpx.AsyncClient(timeout=15) as client:
+        for display, oid in resolved:
+            if not oid:
+                results.append(f"❌ 无法找到「{display}」的 open_id，跳过")
+                continue
+
+            if action == "add":
+                # ── Wiki node: use wiki space members API ──────────────────
+                if is_wiki and space_id:
+                    resp = await client.post(
+                        f"https://open.feishu.cn/open-apis/wiki/v2/spaces/{space_id}/members",
+                        json={"member_type": "openid", "member_id": oid, "member_role": wiki_role},
+                        headers=headers,
+                    )
+                    d = resp.json()
+                    _c = d.get("code")
+                    if _c == 0:
+                        results.append(f"✅ 已将「{display}」加入知识库空间（角色：{wiki_role}）")
+                    elif _c == 131008:
+                        results.append(f"ℹ️ 「{display}」已经是知识库成员，无需重复添加")
+                    elif _c == 131101:
+                        # Public wiki space — everyone already has access
+                        results.append(
+                            f"ℹ️ 这是一个**公开知识库**，所有人已可访问。\n"
+                            f"「{display}」无需单独添加权限。"
+                        )
+                    else:
+                        results.append(f"❌ 添加「{display}」到知识库失败：{d.get('msg')} (code {_c})")
+                    continue
+
+                # ── Regular docx: use Drive permissions API ────────────────
+                body = {
+                    "member_type": "openid",
+                    "member_id": oid,
+                    "perm": api_perm,
+                }
+                resp = await client.post(
+                    f"https://open.feishu.cn/open-apis/drive/v1/permissions/{document_token}/members",
+                    json=body,
+                    headers=headers,
+                    params={"type": "docx"},
+                )
+                d = resp.json()
+                if d.get("code") == 0:
+                    results.append(f"✅ 已将「{display}」添加为**{permission}**权限协作者")
+                else:
+                    _c = d.get("code")
+                    if _c == 99992402:
+                        # Feishu platform policy: you cannot add yourself as a collaborator via API.
+                        # Permissions must be granted by others, or set manually in the UI.
+                        results.append(
+                            f"⚠️ 飞书平台安全限制：无法通过 API 为自己添加协作权限。\n"
+                            f"请手动操作：打开文档 → 右上角「分享」→ 添加自己并设置权限。"
+                        )
+                    elif _c in (99991672, 99991668):
+                        return (
+                            f"❌ 权限不足（code {_c}）\n"
+                            "需要在飞书开放平台开通：\n"
+                            "• drive:drive（云文档权限管理）"
+                        )
+                    else:
+                        results.append(f"❌ 添加「{display}」失败：{d.get('msg')} (code {_c})")
+
+            elif action == "remove":
+                if is_wiki and space_id:
+                    resp = await client.delete(
+                        f"https://open.feishu.cn/open-apis/wiki/v2/spaces/{space_id}/members/{oid}",
+                        headers=headers,
+                        params={"member_type": "openid"},
+                    )
+                    d = resp.json()
+                    if d.get("code") == 0:
+                        results.append(f"✅ 已将「{display}」从知识库移除")
+                    else:
+                        results.append(f"❌ 移除「{display}」失败：{d.get('msg')} (code {d.get('code')})")
+                    continue
+
+                resp = await client.delete(
+                    f"https://open.feishu.cn/open-apis/drive/v1/permissions/{document_token}/members/{oid}",
+                    headers=headers,
+                    params={"type": "docx", "member_type": "openid"},
+                )
+                d = resp.json()
+                if d.get("code") == 0:
+                    results.append(f"✅ 已移除「{display}」的协作权限")
+                else:
+                    results.append(f"❌ 移除「{display}」失败：{d.get('msg')} (code {d.get('code')})")
+
+    return "\n".join(results) if results else "没有需要处理的成员"
 
 
 # ─── Feishu Calendar Tools ────────────────────────────────────────────────────
 
 async def _feishu_calendar_list(agent_id: uuid.UUID, arguments: dict) -> str:
     import httpx
-    from datetime import timedelta
+    import re as _re
+    from datetime import timedelta as _td
 
     user_email = arguments.get("user_email", "").strip()
 
@@ -3267,42 +3847,125 @@ async def _feishu_calendar_list(agent_id: uuid.UUID, arguments: dict) -> str:
         return "❌ Agent has no Feishu channel configured."
     _, token = creds
 
-    # user_email is optional — if provided, resolve open_id (but don't block on failure)
-    if user_email:
-        open_id = await _feishu_resolve_open_id(token, user_email)
-        if not open_id:
-            print(f"[Feishu Calendar] Could not resolve open_id for '{user_email}', listing agent calendar")
+    now = datetime.now(timezone.utc)
 
+    def _to_iso(t: str | None, default: datetime) -> str:
+        """Return an ISO-8601 string with timezone for freebusy API."""
+        if not t:
+            return default.strftime("%Y-%m-%dT%H:%M:%S+00:00")
+        if _re.fullmatch(r'\d+', t.strip()):
+            from datetime import datetime as _dt2
+            return _dt2.fromtimestamp(int(t.strip()), tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+        return t.strip()
+
+    def _to_unix(t: str | None, default: datetime) -> str:
+        """Convert ISO-8601 / Unix string / None to Unix timestamp string."""
+        if not t:
+            return str(int(default.timestamp()))
+        if _re.fullmatch(r'\d+', t.strip()):
+            return t.strip()
+        try:
+            from datetime import datetime as _dt2
+            for fmt in ("%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%dT%H:%M:%S"):
+                try:
+                    dt = _dt2.strptime(t.strip(), fmt)
+                    if dt.tzinfo is None:
+                        dt = dt.replace(tzinfo=timezone.utc)
+                    return str(int(dt.timestamp()))
+                except ValueError:
+                    continue
+            from dateutil import parser as _dp
+            return str(int(_dp.parse(t).timestamp()))
+        except Exception:
+            return str(int(default.timestamp()))
+
+    start_arg = arguments.get("start_time")
+    end_arg = arguments.get("end_time")
+    start_ts = _to_unix(start_arg, now)
+    end_ts = _to_unix(end_arg, now + _td(days=7))
+    start_iso = _to_iso(start_arg, now)
+    end_iso = _to_iso(end_arg, now + _td(days=7))
+
+    # ── 1. Query sender's real freebusy from Feishu Calendar ─────────────────
+    sender_open_id = channel_feishu_sender_open_id.get(None)
+    # Allow explicit override via argument
+    if arguments.get("user_open_id"):
+        sender_open_id = arguments["user_open_id"]
+    elif user_email:
+        resolved = await _feishu_resolve_open_id(token, user_email)
+        if resolved:
+            sender_open_id = resolved
+
+    freebusy_section = ""
+    if sender_open_id:
+        try:
+            async with httpx.AsyncClient(timeout=10) as fb_client:
+                fb_resp = await fb_client.post(
+                    "https://open.feishu.cn/open-apis/calendar/v4/freebusy/list",
+                    headers={"Authorization": f"Bearer {token}"},
+                    params={"user_id_type": "open_id"},
+                    json={
+                        "time_min": start_iso,
+                        "time_max": end_iso,
+                        "user_id": sender_open_id,
+                    },
+                )
+            fb_data = fb_resp.json()
+            if fb_data.get("code") == 0:
+                busy_slots = fb_data.get("data", {}).get("freebusy_list", [])
+                if busy_slots:
+                    from datetime import datetime as _dt2
+                    from zoneinfo import ZoneInfo
+                    tz_cn = ZoneInfo("Asia/Shanghai")
+                    busy_lines = []
+                    for slot in sorted(busy_slots, key=lambda x: x.get("start_time", "")):
+                        try:
+                            s = _dt2.fromisoformat(slot["start_time"]).astimezone(tz_cn).strftime("%H:%M")
+                            e = _dt2.fromisoformat(slot["end_time"]).astimezone(tz_cn).strftime("%H:%M")
+                            busy_lines.append(f"  🔴 {s}–{e}")
+                        except Exception:
+                            busy_lines.append(f"  🔴 {slot.get('start_time')}–{slot.get('end_time')}")
+                    freebusy_section = f"\n📌 **用户真实日历（忙碌时段）**：\n" + "\n".join(busy_lines)
+                else:
+                    freebusy_section = "\n📌 **用户真实日历**：该时段全部空闲。"
+        except Exception as _fe:
+            freebusy_section = f"\n⚠️ Freebusy 查询异常: {_fe}"
+
+    # ── 2. Also list bot's own calendar events ───────────────────────────────
     agent_cal_id, cal_err = await _get_agent_calendar_id(token)
     if not agent_cal_id:
+        # Return freebusy results even if bot calendar fails
+        if freebusy_section:
+            return freebusy_section.strip()
         return cal_err or "❌ Failed to retrieve agent's primary calendar ID."
 
-    now = datetime.now(timezone.utc)
-    start_str = arguments.get("start_time") or now.strftime("%Y-%m-%dT%H:%M:%SZ")
-    end_str = arguments.get("end_time") or (now + timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")
-    max_results = min(int(arguments.get("max_results", 20)), 50)
+    # Note: page_size is NOT a valid param for this API — omit it entirely
+    params: dict = {}
+    if start_ts:
+        params["start_time"] = start_ts
+    if end_ts:
+        params["end_time"] = end_ts
 
     async with httpx.AsyncClient(timeout=20) as client:
         resp = await client.get(
             f"https://open.feishu.cn/open-apis/calendar/v4/calendars/{agent_cal_id}/events",
             headers={"Authorization": f"Bearer {token}"},
-            params={
-                "start_time": start_str,
-                "end_time": end_str,
-                "page_size": max_results,
-            },
+            params=params,
         )
 
     data = resp.json()
     if data.get("code") != 0:
+        if freebusy_section:
+            return freebusy_section.strip()
         return f"❌ Calendar API error: {data.get('msg')} (code {data.get('code')})"
 
     items = data.get("data", {}).get("items", [])
-    label = user_email or "agent"
-    if not items:
-        return f"📅 No events for {label} in this period."
+    if not items and not freebusy_section:
+        return "📅 该时间段内没有日程。"
 
-    lines = [f"📅 **{label}'s calendar** ({len(items)} events):\n"]
+    lines = []
+    if items:
+        lines.append(f"📅 Bot 日历共 {len(items)} 个日程：\n")
     for ev in items:
         summary = ev.get("summary", "(no title)")
         start = ev.get("start_time", {}).get("timestamp", "")
@@ -3318,7 +3981,10 @@ async def _feishu_calendar_list(agent_id: uuid.UUID, arguments: dict) -> str:
         loc_str = f" | 📍{location}" if location else ""
         lines.append(f"- **{summary}** | 🕐{s}–{e}{loc_str}  (ID: `{event_id}`)")
 
-    return "\n".join(lines)
+    if freebusy_section:
+        lines.append(freebusy_section)
+
+    return "\n".join(lines) if lines else "📅 该时间段内没有日程。"
 
 
 async def _feishu_calendar_create(agent_id: uuid.UUID, arguments: dict) -> str:
@@ -3543,11 +4209,7 @@ async def _feishu_user_search(agent_id: uuid.UUID, arguments: dict) -> str:
     _, token = creds
 
     # ── Load local contacts cache ─────────────────────────────────────────────
-    # Validate agent_id to prevent path traversal
-    _safe_id = str(agent_id).replace("..", "").replace("/", "")
-    if _safe_id != str(agent_id):
-        return "❌ Invalid agent ID"
-    _cache_file = _pl.Path(f"/data/workspaces/{_safe_id}/feishu_contacts_cache.json")
+    _cache_file = _pl.Path(f"/data/workspaces/{agent_id}/feishu_contacts_cache.json")
     _cached_users: list[dict] = []
     try:
         if _cache_file.exists():
@@ -3634,8 +4296,7 @@ async def _feishu_user_search(agent_id: uuid.UUID, arguments: dict) -> str:
 async def _feishu_contacts_refresh(agent_id: uuid.UUID) -> None:
     """Force-clear the local contacts cache so next search re-fetches from API."""
     import pathlib as _pl
-    _safe_id = str(agent_id).replace("..", "").replace("/", "")
-    _cache_file = _pl.Path("/data/workspaces") / _safe_id / "feishu_contacts_cache.json"
+    _cache_file = _pl.Path("/data/workspaces") / str(agent_id) / "feishu_contacts_cache.json"
     try:
         if _cache_file.exists():
             _cache_file.unlink()

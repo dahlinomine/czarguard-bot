@@ -86,6 +86,12 @@ async def lifespan(app: FastAPI):
         import app.models.trigger        # noqa
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+            # Add 'atlassian' to channel_type_enum if it doesn't exist yet (idempotent)
+            await conn.execute(
+                __import__("sqlalchemy").text(
+                    "ALTER TYPE channel_type_enum ADD VALUE IF NOT EXISTS 'atlassian'"
+                )
+            )
         print("[startup] ✅ Database tables ready", flush=True)
     except Exception as e:
         print(f"[startup] ⚠️ create_all failed: {e}", flush=True)
@@ -106,6 +112,13 @@ async def lifespan(app: FastAPI):
                 print("[startup] ✅ Default company created", flush=True)
 
         await seed_builtin_tools()
+        from app.services.tool_seeder import seed_atlassian_rovo_config, get_atlassian_api_key
+        await seed_atlassian_rovo_config()
+        # Auto-import Atlassian Rovo tools if an API key is already configured
+        _rovo_key = await get_atlassian_api_key()
+        if _rovo_key:
+            from app.services.resource_discovery import seed_atlassian_rovo_tools
+            await seed_atlassian_rovo_tools(_rovo_key)
         await seed_agent_templates()
         from app.services.skill_seeder import seed_skills, push_default_skills_to_existing_agents
         await seed_skills()
@@ -197,6 +210,8 @@ from app.api.slack import router as slack_router
 from app.api.discord_bot import router as discord_router
 from app.api.teams import router as teams_router
 from app.api.triggers import router as triggers_router
+
+from app.api.atlassian import router as atlassian_router
 from app.api.webhooks import router as webhooks_router
 
 app.include_router(auth_router, prefix=settings.API_PREFIX)
@@ -221,6 +236,8 @@ app.include_router(users_router, prefix=settings.API_PREFIX)
 app.include_router(slack_router, prefix=settings.API_PREFIX)
 app.include_router(discord_router, prefix=settings.API_PREFIX)
 app.include_router(teams_router, prefix=settings.API_PREFIX)
+
+app.include_router(atlassian_router, prefix=settings.API_PREFIX)
 app.include_router(triggers_router)
 app.include_router(chat_sessions_router)
 app.include_router(plaza_router)

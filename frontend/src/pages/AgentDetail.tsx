@@ -765,17 +765,17 @@ function AgentDetailInner() {
 
     const createNewSession = async () => {
         try {
-        const tkn = localStorage.getItem('token');
-        const res = await fetch(`/api/agents/${id}/sessions`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tkn}` },
-            body: JSON.stringify({}),
-        });
-        if (res.ok) {
-            const newSess = await res.json();
-            setSessions(prev => [newSess, ...prev]);
-            setChatMessages([]);
-            setHistoryMsgs([]);
-            setActiveSession(newSess);
+            const tkn = localStorage.getItem('token');
+            const res = await fetch(`/api/agents/${id}/sessions`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tkn}` },
+                body: JSON.stringify({}),
+            });
+            if (res.ok) {
+                const newSess = await res.json();
+                setSessions(prev => [newSess, ...prev]);
+                setChatMessages([]);
+                setHistoryMsgs([]);
+                setActiveSession(newSess);
             } else {
                 const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
                 console.error('Failed to create session:', err);
@@ -1321,13 +1321,14 @@ function AgentDetailInner() {
     });
 
     // ─── Channel config — Feishu ────────────────────────
-    const [channelForm, setChannelForm] = useState({ app_id: '', app_secret: '', encrypt_key: '' });
+    const [channelForm, setChannelForm] = useState({ app_id: '', app_secret: '', encrypt_key: '', connection_mode: 'webhook' });
     const [feishuEditing, setFeishuEditing] = useState(false);
 
     const saveChannel = useMutation({
         mutationFn: () => channelApi.create(id!, {
             channel_type: 'feishu', app_id: channelForm.app_id,
             app_secret: channelForm.app_secret, encrypt_key: channelForm.encrypt_key || undefined,
+            extra_config: { connection_mode: channelForm.connection_mode }
         }),
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['channel', id] }),
     });
@@ -1410,6 +1411,36 @@ function AgentDetailInner() {
         mutationFn: () => fetchAuth(`/agents/${id}/discord-channel`, { method: 'DELETE' }),
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['discord-channel', id] }),
     });
+
+    // ─── Channel config — Atlassian ──────────────────────
+    const [atlassianForm, setAtlassianForm] = useState({ api_key: '', cloud_id: '' });
+    const [atlassianEditing, setAtlassianEditing] = useState(false);
+    const [atlassianTestResult, setAtlassianTestResult] = useState<{ ok: boolean; message?: string; tool_count?: number; error?: string } | null>(null);
+    const [atlassianTesting, setAtlassianTesting] = useState(false);
+    const { data: atlassianConfig } = useQuery({
+        queryKey: ['atlassian-channel', id],
+        queryFn: () => fetchAuth<any>(`/agents/${id}/atlassian-channel`).catch(() => null),
+        enabled: !!id && activeTab === 'settings',
+    });
+    const saveAtlassian = useMutation({
+        mutationFn: () => fetchAuth(`/agents/${id}/atlassian-channel`, { method: 'POST', body: JSON.stringify(atlassianForm) }),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['atlassian-channel', id] }); setAtlassianForm({ api_key: '', cloud_id: '' }); setAtlassianEditing(false); setAtlassianTestResult(null); },
+    });
+    const deleteAtlassian = useMutation({
+        mutationFn: () => fetchAuth(`/agents/${id}/atlassian-channel`, { method: 'DELETE' }),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['atlassian-channel', id] }); setAtlassianTestResult(null); },
+    });
+    const testAtlassian = async () => {
+        setAtlassianTesting(true);
+        setAtlassianTestResult(null);
+        try {
+            const res = await fetchAuth<any>(`/agents/${id}/atlassian-channel/test`, { method: 'POST' });
+            setAtlassianTestResult(res);
+        } catch (e: any) {
+            setAtlassianTestResult({ ok: false, error: String(e) });
+        }
+        setAtlassianTesting(false);
+    };
 
     const CopyBtn = ({ url }: { url: string }) => (
         <button title="Copy" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginLeft: '6px', padding: '1px 4px', cursor: 'pointer', borderRadius: '3px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-secondary)', verticalAlign: 'middle', lineHeight: 1 }}
@@ -3906,7 +3937,265 @@ function AgentDetailInner() {
                                         </div>)}
                                     </div>
 
-                                    {/* Microsoft Teams */}
+
+                                    {/* Feishu */}
+                                    <div style={{ border: '1px solid var(--border-subtle)', borderRadius: '8px', overflow: 'hidden', marginBottom: '12px' }}>
+                                        <div onClick={() => setFeishuOpen(!feishuOpen)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', cursor: 'pointer', transition: 'background 0.15s' }} onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-tertiary)' }}>Feishu</span>
+                                                <div>
+                                                    <div style={{ fontWeight: 600, fontSize: '14px' }}>{t('agent.settings.channel.feishu')}</div>
+                                                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>Feishu / Lark</div>
+                                                </div>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            {channelConfig && (
+                                                <span className={`badge ${channelConfig.is_configured ? 'badge-success' : 'badge-warning'}`}>
+                                                    {channelConfig.is_configured ? t('agent.settings.channel.configured') : t('agent.settings.channel.notConfigured')}
+                                                </span>
+                                            )}
+                                                <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', transition: 'transform 0.2s', transform: feishuOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+                                        </div>
+                                        </div>
+                                        {feishuOpen && (<div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border-subtle)' }}>
+
+                                        {!canManage ? (
+                                            <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', fontStyle: 'italic', padding: '12px', background: 'var(--bg-secondary)', borderRadius: '6px' }}>
+                                                Only the creator or admin can configure communication channels.
+                                            </div>
+                                        ) : channelConfig && !feishuEditing ? (
+                                            <div>
+                                                <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '8px' }}>Mode: <strong>{channelConfig.extra_config?.connection_mode === 'websocket' ? 'Long Connection (WebSocket)' : 'Webhook'}</strong></div>
+                                                <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '8px' }}>App ID: <code>{channelConfig.app_id}</code></div>
+                                                {channelConfig.extra_config?.connection_mode !== 'websocket' && (
+                                                    <div style={{ background: 'var(--bg-secondary)', borderRadius: '6px', padding: '10px', fontSize: '12px', fontFamily: 'var(--font-mono)', marginBottom: '12px' }}>
+                                                        <div style={{ color: 'var(--text-tertiary)', marginBottom: '6px' }}>Webhook URL</div>
+                                                        <div style={{ lineHeight: 1.6, wordBreak: 'break-all' }}>
+                                                            <span style={{ color: 'var(--accent-primary)' }}>
+                                                                {webhookData?.webhook_url || `${window.location.origin}/api/channel/feishu/${id}/webhook`}
+                                                            </span>
+                                                            <button
+                                                                title="Copy"
+                                                                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginLeft: '6px', padding: '1px 4px', cursor: 'pointer', borderRadius: '3px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-secondary)', verticalAlign: 'middle', lineHeight: 1 }}
+                                                                onClick={(e) => {
+                                                                    const url = webhookData?.webhook_url || `${window.location.origin}/api/channel/feishu/${id}/webhook`;
+                                                                    navigator.clipboard.writeText(url).then(() => {
+                                                                        const btn = e.currentTarget as HTMLButtonElement;
+                                                                        const origHtml = btn.innerHTML;
+                                                                        btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="13 2 5 10 2 7"/></svg>';
+                                                                        btn.style.color = 'rgb(16,185,129)';
+                                                                        setTimeout(() => { btn.innerHTML = origHtml; btn.style.color = ''; }, 1500);
+                                                                    });
+                                                                }}
+                                                            >
+                                                                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                                                    <rect x="4" y="4" width="9" height="11" rx="1.5" />
+                                                                    <path d="M3 11H2a1 1 0 01-1-1V2a1 1 0 011-1h8a1 1 0 011 1v1" />
+                                                                </svg>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                <details style={{ marginBottom: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                                    <summary style={{ cursor: 'pointer', fontWeight: 500, color: 'var(--text-primary)', userSelect: 'none', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                        <span style={{ fontSize: '10px' }}>▶</span> {t('channelGuide.setupGuide')}
+                                                    </summary>
+                                                    <ol style={{ paddingLeft: '16px', margin: '8px 0', lineHeight: 1.9 }}>
+                                                        <li>{t('channelGuide.feishu.step1')}</li>
+                                                        <li>{t('channelGuide.feishu.step2')}</li>
+                                                        <li>{t('channelGuide.feishu.step3')}</li>
+                                                        <li>{t('channelGuide.feishu.step4')}</li>
+                                                        <li>{t('channelGuide.feishu.step5')}</li>
+                                                        <li>{t('channelGuide.feishu.step6')}</li>
+                                                        <li>{t('channelGuide.feishu.step7')}</li>
+                                                        <li>{t('channelGuide.feishu.step8')}</li>
+                                                    </ol>
+                                                    <div style={{ margin: '8px 0', borderRadius: '6px', border: '1px solid var(--border-color)', overflow: 'hidden' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 10px', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)' }}>
+                                                            <span style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 500 }}>{t('channelGuide.feishuPermJson')}</span>
+                                                            <button type="button" style={{ fontSize: '10px', padding: '1px 7px', cursor: 'pointer', borderRadius: '3px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-secondary)' }} onClick={(e) => { const btn = e.currentTarget as HTMLButtonElement; const json = '{"scopes":{"tenant":["contact:contact.base:readonly","contact:user.base:readonly","contact:user.id:readonly","im:chat","im:message","im:message.group_at_msg:readonly","im:message.p2p_msg:readonly","im:message:send_as_bot","im:resource"],"user":[]}}'; navigator.clipboard.writeText(json).then(() => { const o = btn.textContent; btn.textContent = t('channelGuide.feishuPermCopied'); btn.style.color = 'rgb(16,185,129)'; setTimeout(() => { btn.textContent = o; btn.style.color = ''; }, 1500); }); }}>{t('channelGuide.feishuPermCopy')}</button>
+                                                        </div>
+                                                        <pre style={{ margin: 0, padding: '6px 10px', fontSize: '10px', fontFamily: 'var(--font-mono)', lineHeight: 1.5, background: 'var(--bg-primary)', color: 'var(--text-secondary)', overflowX: 'auto', userSelect: 'all' }}>{`{
+  "scopes": {
+    "tenant": [
+      "contact:contact.base:readonly",
+      "contact:user.base:readonly",
+      "contact:user.id:readonly",
+      "im:chat",
+      "im:message",
+      "im:message.group_at_msg:readonly",
+      "im:message.p2p_msg:readonly",
+      "im:message:send_as_bot",
+      "im:resource"
+    ],
+    "user": []
+  }
+}`}</pre>
+                                                    </div>
+                                                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', background: 'var(--bg-secondary)', padding: '6px 10px', borderRadius: '6px' }}>💡 {t('channelGuide.feishu.note')}</div>
+                                                </details>
+                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                    <button className="btn btn-secondary" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => { setChannelForm({ app_id: channelConfig.app_id || '', app_secret: channelConfig.app_secret || '', encrypt_key: channelConfig.encrypt_key || '', connection_mode: channelConfig.extra_config?.connection_mode || 'webhook' }); setFeishuEditing(true); }}>Edit</button>
+                                                    <button className="btn btn-danger" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={async () => { await channelApi.delete(id!); queryClient.invalidateQueries({ queryKey: ['channel', id] }); }}>Disconnect</button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+                                                    <div>
+                                                        <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>App ID *</label>
+                                                        <input className="input" value={channelForm.app_id} onChange={e => setChannelForm({ ...channelForm, app_id: e.target.value })} placeholder="cli_xxxxxxxxxxxxxxxx" style={{ fontSize: '12px' }} />
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>App Secret *</label>
+                                                        <div style={{ position: 'relative' }}>
+                                                            <input className="input" type={showPwds['feishu_secret'] ? 'text' : 'password'} value={channelForm.app_secret} onChange={e => setChannelForm({ ...channelForm, app_secret: e.target.value })} style={{ fontSize: '12px', paddingRight: '36px', width: '100%' }} />
+                                                            <button type="button" onClick={() => togglePwd('feishu_secret')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '2px', display: 'flex', alignItems: 'center' }}>{showPwds['feishu_secret'] ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>}</button>
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '8px' }}>Connection Mode</label>
+                                                        <div style={{ display: 'flex', gap: '16px', marginBottom: '8px' }}>
+                                                            <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                                                                <input type="radio" name="connection_mode" value="webhook" checked={channelForm.connection_mode === 'webhook'} onChange={() => setChannelForm({ ...channelForm, connection_mode: 'webhook' })} />
+                                                                Webhook (Event Subscription)
+                                                            </label>
+                                                            <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                                                                <input type="radio" name="connection_mode" value="websocket" checked={channelForm.connection_mode === 'websocket'} onChange={() => setChannelForm({ ...channelForm, connection_mode: 'websocket' })} />
+                                                                Long Connection (WebSocket)
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    {channelForm.connection_mode === 'webhook' && (
+                                                        <div>
+                                                            <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Encrypt Key</label>
+                                                            <div style={{ position: 'relative' }}>
+                                                                <input className="input" type={showPwds['feishu_encrypt'] ? 'text' : 'password'} value={channelForm.encrypt_key} onChange={e => setChannelForm({ ...channelForm, encrypt_key: e.target.value })} style={{ fontSize: '12px', paddingRight: '36px', width: '100%' }} />
+                                                                <button type="button" onClick={() => togglePwd('feishu_encrypt')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '2px', display: 'flex', alignItems: 'center' }}>{showPwds['feishu_encrypt'] ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>}</button>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <details style={{ marginBottom: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                                    <summary style={{ cursor: 'pointer', fontWeight: 500, color: 'var(--text-primary)', userSelect: 'none', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                        <span style={{ fontSize: '10px' }}>▶</span> {t('channelGuide.setupGuide')}
+                                                    </summary>
+                                                    <ol style={{ paddingLeft: '16px', margin: '8px 0', lineHeight: 1.9 }}>
+                                                        <li>{t('channelGuide.feishu.step1')}</li>
+                                                        <li>{t('channelGuide.feishu.step2')}</li>
+                                                        <li>{t('channelGuide.feishu.step3')}</li>
+                                                        <li>{t('channelGuide.feishu.step4')}</li>
+                                                        <li>{t('channelGuide.feishu.step5')}</li>
+                                                        <li>{t('channelGuide.feishu.step6')}</li>
+                                                        <li>{t('channelGuide.feishu.step7')}</li>
+                                                        <li>{t('channelGuide.feishu.step8')}</li>
+                                                    </ol>
+                                                    <div style={{ margin: '8px 0', borderRadius: '6px', border: '1px solid var(--border-color)', overflow: 'hidden' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 10px', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)' }}>
+                                                            <span style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 500 }}>{t('channelGuide.feishuPermJson')}</span>
+                                                            <button type="button" style={{ fontSize: '10px', padding: '1px 7px', cursor: 'pointer', borderRadius: '3px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-secondary)' }} onClick={(e) => { const btn = e.currentTarget as HTMLButtonElement; const json = '{"scopes":{"tenant":["contact:contact.base:readonly","contact:user.base:readonly","contact:user.id:readonly","im:chat","im:message","im:message.group_at_msg:readonly","im:message.p2p_msg:readonly","im:message:send_as_bot","im:resource"],"user":[]}}'; navigator.clipboard.writeText(json).then(() => { const o = btn.textContent; btn.textContent = t('channelGuide.feishuPermCopied'); btn.style.color = 'rgb(16,185,129)'; setTimeout(() => { btn.textContent = o; btn.style.color = ''; }, 1500); }); }}>{t('channelGuide.feishuPermCopy')}</button>
+                                                        </div>
+                                                        <pre style={{ margin: 0, padding: '6px 10px', fontSize: '10px', fontFamily: 'var(--font-mono)', lineHeight: 1.5, background: 'var(--bg-primary)', color: 'var(--text-secondary)', overflowX: 'auto', userSelect: 'all' }}>{`{
+  "scopes": {
+    "tenant": [
+      "contact:contact.base:readonly",
+      "contact:user.base:readonly",
+      "contact:user.id:readonly",
+      "im:chat",
+      "im:message",
+      "im:message.group_at_msg:readonly",
+      "im:message.p2p_msg:readonly",
+      "im:message:send_as_bot",
+      "im:resource"
+    ],
+    "user": []
+  }
+}`}</pre>
+                                                    </div>
+                                                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', background: 'var(--bg-secondary)', padding: '6px 10px', borderRadius: '6px' }}>💡 {t('channelGuide.feishu.note')}</div>
+                                                </details>
+                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                    <button className="btn btn-primary" style={{ fontSize: '12px' }} onClick={() => { saveChannel.mutate(); setFeishuEditing(false); }} disabled={!channelForm.app_id || !channelForm.app_secret || saveChannel.isPending}>
+                                                        {saveChannel.isPending ? t('common.loading') : (feishuEditing ? 'Save Changes' : t('agent.settings.channel.saveChannel'))}
+                                                    </button>
+                                                    {feishuEditing && <button className="btn btn-secondary" style={{ fontSize: '12px' }} onClick={() => setFeishuEditing(false)}>Cancel</button>}
+                                                </div>
+                                            </div>
+                                        )}
+                                        </div>)}
+                                    </div>
+				    {/* Atlassian */}
+                                    <div style={{ border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '16px', marginBottom: '12px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <path d="M11.53 1.1a.59.59 0 00-.96.06L5.81 9.08a.59.59 0 00.52.87h3.89l-2.7 4.73a.59.59 0 00.52.87h7.42a.59.59 0 00.52-.87l-5.24-9.17 1.09-1.91a.59.59 0 000-.59L11.53 1.1z" fill="#0052CC"/>
+                                                    <path d="M12.47 22.9a.59.59 0 00.96-.06l4.76-7.92a.59.59 0 00-.52-.87h-3.89l2.7-4.73a.59.59 0 00-.52-.87H8.54a.59.59 0 00-.52.87l5.24 9.17-1.09 1.91a.59.59 0 000 .59l.3.51z" fill="#2684FF"/>
+                                                </svg>
+                                                <div>
+                                                    <div style={{ fontWeight: 600, fontSize: '14px' }}>Atlassian</div>
+                                                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>Jira · Confluence · Compass (Rovo MCP)</div>
+                                                </div>
+                                            </div>
+                                            {atlassianConfig && <span className={`badge ${atlassianConfig.is_configured ? 'badge-success' : 'badge-warning'}`}>{atlassianConfig.is_configured ? t('agent.settings.channel.configured') : t('agent.settings.channel.notConfigured')}</span>}
+                                        </div>
+                                        {!canManage ? (
+                                            <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', fontStyle: 'italic', padding: '12px', background: 'var(--bg-secondary)', borderRadius: '6px' }}>
+                                                Only the creator or admin can configure integrations.
+                                            </div>
+                                        ) : atlassianConfig?.is_configured && !atlassianEditing ? (
+                                            <div>
+                                                <div style={{ background: 'var(--bg-secondary)', borderRadius: '6px', padding: '10px', fontSize: '12px', marginBottom: '12px' }}>
+                                                    <div style={{ color: 'var(--text-tertiary)', marginBottom: '4px' }}>Status</div>
+                                                    <div style={{ color: 'var(--text-primary)', fontWeight: 500 }}>✅ API Key configured — Jira / Confluence / Compass tools available</div>
+                                                    {atlassianConfig.cloud_id && <div style={{ color: 'var(--text-tertiary)', marginTop: '4px', fontSize: '11px' }}>Cloud ID: <code>{atlassianConfig.cloud_id}</code></div>}
+                                                </div>
+                                                {atlassianTestResult && (
+                                                    <div style={{ padding: '8px 12px', borderRadius: '6px', fontSize: '12px', marginBottom: '10px', background: atlassianTestResult.ok ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${atlassianTestResult.ok ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)'}`, color: atlassianTestResult.ok ? 'rgb(5,150,105)' : 'rgb(220,38,38)' }}>
+                                                        {atlassianTestResult.ok
+                                                            ? `✅ ${atlassianTestResult.message || `Connected — ${atlassianTestResult.tool_count} tools available`}`
+                                                            : `❌ ${atlassianTestResult.error}`}
+                                                    </div>
+                                                )}
+                                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                                    <button className="btn btn-secondary" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={testAtlassian} disabled={atlassianTesting}>
+                                                        {atlassianTesting ? 'Testing...' : '🔌 Test Connection'}
+                                                    </button>
+                                                    <button className="btn btn-secondary" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => { setAtlassianForm({ api_key: '', cloud_id: atlassianConfig?.cloud_id || '' }); setAtlassianEditing(true); }}>Edit</button>
+                                                    <button className="btn btn-danger" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => deleteAtlassian.mutate()}>Disconnect</button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                                <div style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(0,82,204,0.06)', border: '1px solid rgba(0,82,204,0.2)', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
+                                                    💡 Connect your Atlassian account to give this agent access to Jira, Confluence, and Compass via the Rovo MCP server.
+                                                    Get your API key at <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" rel="noreferrer" style={{ color: 'var(--accent-primary)' }}>id.atlassian.com → Security → API tokens</a>
+                                                </div>
+                                                <div>
+                                                    <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>API Key *</label>
+                                                    <div style={{ position: 'relative' }}>
+                                                        <input className="input" type={showPwds['atl_key'] ? 'text' : 'password'} value={atlassianForm.api_key} onChange={e => setAtlassianForm({ ...atlassianForm, api_key: e.target.value })} placeholder="ATSTT3x... (service account) or Basic base64(email:token)" style={{ fontSize: '12px', paddingRight: '36px', width: '100%' }} />
+                                                        <button type="button" onClick={() => togglePwd('atl_key')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '2px', display: 'flex', alignItems: 'center' }}>{showPwds['atl_key'] ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>}</button>
+                                                    </div>
+                                                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>
+                                                        Service account key starts with <code>ATSTT</code>. Personal API token: base64-encode <code>email:token</code> and prefix with <code>Basic </code>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Cloud ID <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(optional)</span></label>
+                                                    <input className="input" value={atlassianForm.cloud_id} onChange={e => setAtlassianForm({ ...atlassianForm, cloud_id: e.target.value })} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" style={{ fontSize: '12px' }} />
+                                                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>Required for multi-site setups. Find it at <code>your-site.atlassian.net/_edge/tenant_info</code></div>
+                                                </div>
+                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                    <button className="btn btn-primary" style={{ fontSize: '12px', alignSelf: 'flex-start' }} onClick={() => saveAtlassian.mutate()} disabled={!atlassianForm.api_key || saveAtlassian.isPending}>
+                                                        {saveAtlassian.isPending ? 'Connecting...' : (atlassianEditing ? 'Save Changes' : 'Connect Atlassian')}
+                                                    </button>
+                                                    {atlassianEditing && <button className="btn btn-secondary" style={{ fontSize: '12px' }} onClick={() => { setAtlassianEditing(false); setAtlassianForm({ api_key: '', cloud_id: '' }); }}>Cancel</button>}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+				    {/* Microsoft Teams */}
                                     <div style={{ border: '1px solid var(--border-subtle)', borderRadius: '8px', overflow: 'hidden', marginBottom: '12px' }}>
                                         <div onClick={() => setTeamsOpen(!teamsOpen)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', cursor: 'pointer', transition: 'background 0.15s' }} onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -4005,175 +4294,6 @@ function AgentDetailInner() {
                                                     </div>
                                                 </div>
                                             )}
-                                        </div>)}
-                                    </div>
-
-                                    {/* Feishu */}
-                                    <div style={{ border: '1px solid var(--border-subtle)', borderRadius: '8px', overflow: 'hidden', marginBottom: '12px' }}>
-                                        <div onClick={() => setFeishuOpen(!feishuOpen)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', cursor: 'pointer', transition: 'background 0.15s' }} onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-tertiary)' }}>Feishu</span>
-                                                <div>
-                                                    <div style={{ fontWeight: 600, fontSize: '14px' }}>{t('agent.settings.channel.feishu')}</div>
-                                                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>Feishu / Lark</div>
-                                                </div>
-                                            </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            {channelConfig && (
-                                                <span className={`badge ${channelConfig.is_configured ? 'badge-success' : 'badge-warning'}`}>
-                                                    {channelConfig.is_configured ? t('agent.settings.channel.configured') : t('agent.settings.channel.notConfigured')}
-                                                </span>
-                                            )}
-                                                <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', transition: 'transform 0.2s', transform: feishuOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
-                                        </div>
-                                        </div>
-                                        {feishuOpen && (<div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border-subtle)' }}>
-
-                                        {!canManage ? (
-                                            <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', fontStyle: 'italic', padding: '12px', background: 'var(--bg-secondary)', borderRadius: '6px' }}>
-                                                Only the creator or admin can configure communication channels.
-                                            </div>
-                                        ) : channelConfig && !feishuEditing ? (
-                                            <div>
-                                                <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '8px' }}>App ID: <code>{channelConfig.app_id}</code></div>
-                                                <div style={{ background: 'var(--bg-secondary)', borderRadius: '6px', padding: '10px', fontSize: '12px', fontFamily: 'var(--font-mono)', marginBottom: '12px' }}>
-                                                    <div style={{ color: 'var(--text-tertiary)', marginBottom: '6px' }}>Webhook URL</div>
-                                                    <div style={{ lineHeight: 1.6, wordBreak: 'break-all' }}>
-                                                        <span style={{ color: 'var(--accent-primary)' }}>
-                                                            {webhookData?.webhook_url || `${window.location.origin}/api/channel/feishu/${id}/webhook`}
-                                                        </span>
-                                                        <button
-                                                            title="Copy"
-                                                            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginLeft: '6px', padding: '1px 4px', cursor: 'pointer', borderRadius: '3px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-secondary)', verticalAlign: 'middle', lineHeight: 1 }}
-                                                            onClick={(e) => {
-                                                                const url = webhookData?.webhook_url || `${window.location.origin}/api/channel/feishu/${id}/webhook`;
-                                                                navigator.clipboard.writeText(url).then(() => {
-                                                                    const btn = e.currentTarget as HTMLButtonElement;
-                                                                    const origHtml = btn.innerHTML;
-                                                                    btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="13 2 5 10 2 7"/></svg>';
-                                                                    btn.style.color = 'rgb(16,185,129)';
-                                                                    setTimeout(() => { btn.innerHTML = origHtml; btn.style.color = ''; }, 1500);
-                                                                });
-                                                            }}
-                                                        >
-                                                            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                                                                <rect x="4" y="4" width="9" height="11" rx="1.5" />
-                                                                <path d="M3 11H2a1 1 0 01-1-1V2a1 1 0 011-1h8a1 1 0 011 1v1" />
-                                                            </svg>
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                                <details style={{ marginBottom: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                                                    <summary style={{ cursor: 'pointer', fontWeight: 500, color: 'var(--text-primary)', userSelect: 'none', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                        <span style={{ fontSize: '10px' }}>▶</span> {t('channelGuide.setupGuide')}
-                                                    </summary>
-                                                    <ol style={{ paddingLeft: '16px', margin: '8px 0', lineHeight: 1.9 }}>
-                                                        <li>{t('channelGuide.feishu.step1')}</li>
-                                                        <li>{t('channelGuide.feishu.step2')}</li>
-                                                        <li>{t('channelGuide.feishu.step3')}</li>
-                                                        <li>{t('channelGuide.feishu.step4')}</li>
-                                                        <li>{t('channelGuide.feishu.step5')}</li>
-                                                        <li>{t('channelGuide.feishu.step6')}</li>
-                                                        <li>{t('channelGuide.feishu.step7')}</li>
-                                                        <li>{t('channelGuide.feishu.step8')}</li>
-                                                    </ol>
-                                                    <div style={{ margin: '8px 0', borderRadius: '6px', border: '1px solid var(--border-color)', overflow: 'hidden' }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 10px', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)' }}>
-                                                            <span style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 500 }}>{t('channelGuide.feishuPermJson')}</span>
-                                                            <button type="button" style={{ fontSize: '10px', padding: '1px 7px', cursor: 'pointer', borderRadius: '3px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-secondary)' }} onClick={(e) => { const btn = e.currentTarget as HTMLButtonElement; const json = '{"scopes":{"tenant":["contact:contact.base:readonly","contact:user.base:readonly","contact:user.id:readonly","im:chat","im:message","im:message.group_at_msg:readonly","im:message.p2p_msg:readonly","im:message:send_as_bot","im:resource"],"user":[]}}'; navigator.clipboard.writeText(json).then(() => { const o = btn.textContent; btn.textContent = t('channelGuide.feishuPermCopied'); btn.style.color = 'rgb(16,185,129)'; setTimeout(() => { btn.textContent = o; btn.style.color = ''; }, 1500); }); }}>{t('channelGuide.feishuPermCopy')}</button>
-                                                        </div>
-                                                        <pre style={{ margin: 0, padding: '6px 10px', fontSize: '10px', fontFamily: 'var(--font-mono)', lineHeight: 1.5, background: 'var(--bg-primary)', color: 'var(--text-secondary)', overflowX: 'auto', userSelect: 'all' }}>{`{
-  "scopes": {
-    "tenant": [
-      "contact:contact.base:readonly",
-      "contact:user.base:readonly",
-      "contact:user.id:readonly",
-      "im:chat",
-      "im:message",
-      "im:message.group_at_msg:readonly",
-      "im:message.p2p_msg:readonly",
-      "im:message:send_as_bot",
-      "im:resource"
-    ],
-    "user": []
-  }
-}`}</pre>
-                                                    </div>
-                                                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', background: 'var(--bg-secondary)', padding: '6px 10px', borderRadius: '6px' }}>💡 {t('channelGuide.feishu.note')}</div>
-                                                </details>
-                                                <div style={{ display: 'flex', gap: '8px' }}>
-                                                    <button className="btn btn-secondary" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => { setChannelForm({ app_id: channelConfig.app_id || '', app_secret: channelConfig.app_secret || '', encrypt_key: channelConfig.encrypt_key || '' }); setFeishuEditing(true); }}>Edit</button>
-                                                    <button className="btn btn-danger" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={async () => { await channelApi.delete(id!); queryClient.invalidateQueries({ queryKey: ['channel', id] }); }}>Disconnect</button>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div>
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
-                                                    <div>
-                                                        <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>App ID *</label>
-                                                        <input className="input" value={channelForm.app_id} onChange={e => setChannelForm({ ...channelForm, app_id: e.target.value })} placeholder="cli_xxxxxxxxxxxxxxxx" style={{ fontSize: '12px' }} />
-                                                    </div>
-                                                    <div>
-                                                        <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>App Secret *</label>
-                                                        <div style={{ position: 'relative' }}>
-                                                            <input className="input" type={showPwds['feishu_secret'] ? 'text' : 'password'} value={channelForm.app_secret} onChange={e => setChannelForm({ ...channelForm, app_secret: e.target.value })} style={{ fontSize: '12px', paddingRight: '36px', width: '100%' }} />
-                                                            <button type="button" onClick={() => togglePwd('feishu_secret')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '2px', display: 'flex', alignItems: 'center' }}>{showPwds['feishu_secret'] ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>}</button>
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Encrypt Key</label>
-                                                        <div style={{ position: 'relative' }}>
-                                                            <input className="input" type={showPwds['feishu_encrypt'] ? 'text' : 'password'} value={channelForm.encrypt_key} onChange={e => setChannelForm({ ...channelForm, encrypt_key: e.target.value })} style={{ fontSize: '12px', paddingRight: '36px', width: '100%' }} />
-                                                            <button type="button" onClick={() => togglePwd('feishu_encrypt')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '2px', display: 'flex', alignItems: 'center' }}>{showPwds['feishu_encrypt'] ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>}</button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <details style={{ marginBottom: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                                                    <summary style={{ cursor: 'pointer', fontWeight: 500, color: 'var(--text-primary)', userSelect: 'none', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                        <span style={{ fontSize: '10px' }}>▶</span> {t('channelGuide.setupGuide')}
-                                                    </summary>
-                                                    <ol style={{ paddingLeft: '16px', margin: '8px 0', lineHeight: 1.9 }}>
-                                                        <li>{t('channelGuide.feishu.step1')}</li>
-                                                        <li>{t('channelGuide.feishu.step2')}</li>
-                                                        <li>{t('channelGuide.feishu.step3')}</li>
-                                                        <li>{t('channelGuide.feishu.step4')}</li>
-                                                        <li>{t('channelGuide.feishu.step5')}</li>
-                                                        <li>{t('channelGuide.feishu.step6')}</li>
-                                                        <li>{t('channelGuide.feishu.step7')}</li>
-                                                        <li>{t('channelGuide.feishu.step8')}</li>
-                                                    </ol>
-                                                    <div style={{ margin: '8px 0', borderRadius: '6px', border: '1px solid var(--border-color)', overflow: 'hidden' }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 10px', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)' }}>
-                                                            <span style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 500 }}>{t('channelGuide.feishuPermJson')}</span>
-                                                            <button type="button" style={{ fontSize: '10px', padding: '1px 7px', cursor: 'pointer', borderRadius: '3px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-secondary)' }} onClick={(e) => { const btn = e.currentTarget as HTMLButtonElement; const json = '{"scopes":{"tenant":["contact:contact.base:readonly","contact:user.base:readonly","contact:user.id:readonly","im:chat","im:message","im:message.group_at_msg:readonly","im:message.p2p_msg:readonly","im:message:send_as_bot","im:resource"],"user":[]}}'; navigator.clipboard.writeText(json).then(() => { const o = btn.textContent; btn.textContent = t('channelGuide.feishuPermCopied'); btn.style.color = 'rgb(16,185,129)'; setTimeout(() => { btn.textContent = o; btn.style.color = ''; }, 1500); }); }}>{t('channelGuide.feishuPermCopy')}</button>
-                                                        </div>
-                                                        <pre style={{ margin: 0, padding: '6px 10px', fontSize: '10px', fontFamily: 'var(--font-mono)', lineHeight: 1.5, background: 'var(--bg-primary)', color: 'var(--text-secondary)', overflowX: 'auto', userSelect: 'all' }}>{`{
-  "scopes": {
-    "tenant": [
-      "contact:contact.base:readonly",
-      "contact:user.base:readonly",
-      "contact:user.id:readonly",
-      "im:chat",
-      "im:message",
-      "im:message.group_at_msg:readonly",
-      "im:message.p2p_msg:readonly",
-      "im:message:send_as_bot",
-      "im:resource"
-    ],
-    "user": []
-  }
-}`}</pre>
-                                                    </div>
-                                                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', background: 'var(--bg-secondary)', padding: '6px 10px', borderRadius: '6px' }}>💡 {t('channelGuide.feishu.note')}</div>
-                                                </details>
-                                                <div style={{ display: 'flex', gap: '8px' }}>
-                                                    <button className="btn btn-primary" style={{ fontSize: '12px' }} onClick={() => { saveChannel.mutate(); setFeishuEditing(false); }} disabled={!channelForm.app_id || !channelForm.app_secret || saveChannel.isPending}>
-                                                        {saveChannel.isPending ? t('common.loading') : (feishuEditing ? 'Save Changes' : t('agent.settings.channel.saveChannel'))}
-                                                    </button>
-                                                    {feishuEditing && <button className="btn btn-secondary" style={{ fontSize: '12px' }} onClick={() => setFeishuEditing(false)}>Cancel</button>}
-                                                </div>
-                                            </div>
-                                        )}
                                         </div>)}
                                     </div>
 
