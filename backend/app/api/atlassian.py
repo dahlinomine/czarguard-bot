@@ -59,7 +59,8 @@ async def configure_atlassian_channel(
         existing.extra_config = {**(existing.extra_config or {}), "cloud_id": cloud_id}
         await db.commit()
         # Sync tools for this agent in background
-        await _sync_atlassian_tools_for_agent(agent_id, api_key)
+        import asyncio
+        asyncio.create_task(_sync_atlassian_tools_for_agent(agent_id, api_key))
         return _serialize(existing)
 
     config = ChannelConfig(
@@ -74,7 +75,8 @@ async def configure_atlassian_channel(
     await db.commit()
     await db.refresh(config)
     # Sync tools for this agent in background
-    await _sync_atlassian_tools_for_agent(agent_id, api_key)
+    import asyncio
+    asyncio.create_task(_sync_atlassian_tools_for_agent(agent_id, api_key))
     return _serialize(config)
 
 

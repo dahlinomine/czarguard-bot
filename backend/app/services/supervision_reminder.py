@@ -46,8 +46,12 @@ def _parse_schedule(remind_schedule: str) -> dict | None:
     return legacy_map.get(remind_schedule)
 
 
-def _is_reminder_due(remind_schedule: str, last_reminded_at: datetime | None, now: datetime) -> bool:
-    """Check if a reminder is due based on the schedule config."""
+def _is_reminder_due(remind_schedule: str, last_reminded_at: datetime | None, now_utc: datetime) -> bool:
+    """Check if a reminder is due based on the schedule config.
+    
+    All time calculations are anchored to now_utc (provided by tick loop).
+    Default behavior is to use UTC for hour/minute checks unless a timezone is specified.
+    """
     sched = _parse_schedule(remind_schedule)
     if not sched:
         return False
@@ -62,21 +66,23 @@ def _is_reminder_due(remind_schedule: str, last_reminded_at: datetime | None, no
     except Exception:
         th, tm = 9, 0
 
-    local_now = datetime.now()
+    # For now, we use UTC for the hour/minute check.
+    # In the future, we should load agent.timezone and convert now_utc.
+    current_time = now_utc
 
     # Not yet time today
-    if local_now.hour < th or (local_now.hour == th and local_now.minute < tm):
+    if current_time.hour < th or (current_time.hour == th and current_time.minute < tm):
         return False
 
     # Already past the time window (allow 60-min window)
-    if local_now.hour > th or (local_now.hour == th and local_now.minute > tm + 59):
+    if current_time.hour > th or (current_time.hour == th and current_time.minute > tm + 59):
         return False
 
     # Weekly: check if today is a selected weekday
     if freq == "weekly":
         weekdays = sched.get("weekdays", [1, 2, 3, 4, 5])
         # Python: Monday=0, Sunday=6 → convert to our format: Sunday=0, Monday=1, ...
-        py_weekday = local_now.weekday()  # Mon=0
+        py_weekday = current_time.weekday()  # Mon=0
         our_weekday = (py_weekday + 1) % 7  # Sun=0
         if our_weekday not in weekdays:
             return False
@@ -85,7 +91,11 @@ def _is_reminder_due(remind_schedule: str, last_reminded_at: datetime | None, no
     if last_reminded_at is None:
         return True
 
-    elapsed = now - last_reminded_at.replace(tzinfo=timezone.utc)
+    # Ensure both are timezone-aware for comparison
+    if last_reminded_at.tzinfo is None:
+        last_reminded_at = last_reminded_at.replace(tzinfo=timezone.utc)
+
+    elapsed = now_utc - last_reminded_at
     min_interval = timedelta(days=interval) - timedelta(hours=2)  # tolerance
     return elapsed >= min_interval
 
@@ -276,7 +286,10 @@ async def _send_supervision_reminder(task: Task, agent_name: str):
                 if target_member:
                     # Try Feishu
                     config_r = await db.execute(
-                        select(ChannelConfig).where(ChannelConfig.agent_id == task.agent_id)
+                        select(ChannelConfig).where(
+                            ChannelConfig.agent_id == task.agent_id,
+                            ChannelConfig.channel_type == "feishu",
+                        )
                     )
                     config = config_r.scalar_one_or_none()
                     if config and (target_member.email or target_member.phone):
