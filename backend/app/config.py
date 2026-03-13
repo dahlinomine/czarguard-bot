@@ -1,8 +1,33 @@
 """Application configuration."""
 
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings
+
+
+def _running_in_container() -> bool:
+    """Best-effort container runtime detection."""
+    if Path("/.dockerenv").exists() or Path("/run/.containerenv").exists():
+        return True
+
+    cgroup = Path("/proc/1/cgroup")
+    if not cgroup.exists():
+        return False
+
+    try:
+        content = cgroup.read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        return False
+
+    return any(token in content for token in ("docker", "containerd", "kubepods", "podman"))
+
+
+def _default_agent_data_dir() -> str:
+    """Use Docker path in containers, user-writable path on local hosts."""
+    if _running_in_container():
+        return "/data/agents"
+    return str(Path.home() / ".clawith" / "data" / "agents")
 
 
 class Settings(BaseSettings):
@@ -27,7 +52,7 @@ class Settings(BaseSettings):
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
 
     # File Storage
-    AGENT_DATA_DIR: str = "/data/agents"
+    AGENT_DATA_DIR: str = _default_agent_data_dir()
     AGENT_TEMPLATE_DIR: str = "/app/agent_template"
 
     # Docker (for Agent containers)
