@@ -130,6 +130,18 @@ docker compose up -d --build
 > sudo systemctl daemon-reload && sudo systemctl restart docker
 > ```
 > 然后重新执行 `docker compose up -d`。
+>
+> **PyPI 镜像加速（可选）：** 如果 `docker compose up -d --build` 或 `bash setup.sh` 时 pip 安装超时，可以设置国内 PyPI 镜像：
+> ```bash
+> export CLAWITH_PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
+> export CLAWITH_PIP_TRUSTED_HOST=pypi.tuna.tsinghua.edu.cn
+> ```
+>
+> **Debian apt 源加速（构建失败时）：** 如果 `docker compose up -d --build` 在 `apt-get update` 步骤报错（无法访问 `deb.debian.org`），在 `backend/Dockerfile` 中每个 `WORKDIR /app` 之后、`apt-get` 之前，加一行换源命令：
+> ```dockerfile
+> RUN sed -i 's|deb.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list.d/debian.sources
+> ```
+> 需要在 `deps` 和 `production` 两个阶段都加（Dockerfile 中有两处 `WORKDIR /app`，分别在其后加上这行）。
 
 ### 首次登录
 
