@@ -254,28 +254,28 @@ function ToolsManager({ agentId }: { agentId: string }) {
                                         );
                                     })
                                     .map((field: any) => (
-                                    <div key={field.key}>
-                                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, marginBottom: '4px' }}>
-                                            {field.label}
-                                            {configTool.global_config?.[field.key] && (
-                                                <span style={{ fontWeight: 400, color: 'var(--text-tertiary)', marginLeft: '4px' }}>
-                                                    (global: {String(configTool.global_config[field.key]).slice(0, 20)}{String(configTool.global_config[field.key]).length > 20 ? '…' : ''})
-                                                </span>
+                                        <div key={field.key}>
+                                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, marginBottom: '4px' }}>
+                                                {field.label}
+                                                {configTool.global_config?.[field.key] && (
+                                                    <span style={{ fontWeight: 400, color: 'var(--text-tertiary)', marginLeft: '4px' }}>
+                                                        (global: {String(configTool.global_config[field.key]).slice(0, 20)}{String(configTool.global_config[field.key]).length > 20 ? '…' : ''})
+                                                    </span>
+                                                )}
+                                            </label>
+                                            {field.type === 'password' ? (
+                                                <input type="password" className="form-input" value={configData[field.key] ?? ''} placeholder={field.placeholder || 'Leave blank to use global default'} onChange={e => setConfigData(p => ({ ...p, [field.key]: e.target.value }))} />
+                                            ) : field.type === 'select' ? (
+                                                <select className="form-input" value={configData[field.key] ?? field.default ?? ''} onChange={e => setConfigData(p => ({ ...p, [field.key]: e.target.value }))}>
+                                                    {(field.options || []).map((o: any) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                                </select>
+                                            ) : field.type === 'number' ? (
+                                                <input type="number" className="form-input" value={configData[field.key] ?? field.default ?? ''} placeholder={field.placeholder || ''} min={field.min} max={field.max} onChange={e => setConfigData(p => ({ ...p, [field.key]: e.target.value ? Number(e.target.value) : '' }))} />
+                                            ) : (
+                                                <input type="text" className="form-input" value={configData[field.key] ?? ''} placeholder={field.placeholder || 'Leave blank to use global default'} onChange={e => setConfigData(p => ({ ...p, [field.key]: e.target.value }))} />
                                             )}
-                                        </label>
-                                        {field.type === 'password' ? (
-                                            <input type="password" className="form-input" value={configData[field.key] ?? ''} placeholder={field.placeholder || 'Leave blank to use global default'} onChange={e => setConfigData(p => ({ ...p, [field.key]: e.target.value }))} />
-                                        ) : field.type === 'select' ? (
-                                            <select className="form-input" value={configData[field.key] ?? field.default ?? ''} onChange={e => setConfigData(p => ({ ...p, [field.key]: e.target.value }))}>
-                                                {(field.options || []).map((o: any) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                                            </select>
-                                        ) : field.type === 'number' ? (
-                                            <input type="number" className="form-input" value={configData[field.key] ?? field.default ?? ''} placeholder={field.placeholder || ''} min={field.min} max={field.max} onChange={e => setConfigData(p => ({ ...p, [field.key]: e.target.value ? Number(e.target.value) : '' }))} />
-                                        ) : (
-                                            <input type="text" className="form-input" value={configData[field.key] ?? ''} placeholder={field.placeholder || 'Leave blank to use global default'} onChange={e => setConfigData(p => ({ ...p, [field.key]: e.target.value }))} />
-                                        )}
-                                    </div>
-                                ))}
+                                        </div>
+                                    ))}
                                 {/* Email tool: test connection button + help text */}
                                 {configTool.category === 'email' && (
                                     <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -494,12 +494,12 @@ function RelationshipEditor({ agentId, readOnly = false }: { agentId: string; re
                         {relationships.map((r: any) => (
                             <div key={r.id} style={{ borderRadius: '8px', border: '1px solid var(--border-subtle)', overflow: 'hidden' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px' }}>
-                                <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(224,238,238,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: 600, flexShrink: 0 }}>{r.member?.name?.[0] || '?'}</div>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ fontWeight: 600, fontSize: '13px' }}>{r.member?.name || '?'} <span className="badge" style={{ fontSize: '10px', marginLeft: '4px' }}>{r.relation_label}</span></div>
-                                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{r.member?.title || ''} · {r.member?.department_path || ''}</div>
+                                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(224,238,238,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: 600, flexShrink: 0 }}>{r.member?.name?.[0] || '?'}</div>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontWeight: 600, fontSize: '13px' }}>{r.member?.name || '?'} <span className="badge" style={{ fontSize: '10px', marginLeft: '4px' }}>{r.relation_label}</span></div>
+                                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{r.member?.title || ''} · {r.member?.department_path || ''}</div>
                                         {r.description && editingId !== r.id && <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>{r.description}</div>}
-                                </div>
+                                    </div>
                                     {!readOnly && editingId !== r.id && (
                                         <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
                                             <button className="btn btn-ghost" style={{ fontSize: '12px' }} onClick={() => startEditRelationship(r)}>{t('common.edit', 'Edit')}</button>
@@ -568,12 +568,12 @@ function RelationshipEditor({ agentId, readOnly = false }: { agentId: string; re
                         {agentRelationships.map((r: any) => (
                             <div key={r.id} style={{ borderRadius: '8px', border: '1px solid rgba(16,185,129,0.3)', background: 'rgba(16,185,129,0.05)', overflow: 'hidden' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px' }}>
-                                <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(16,185,129,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', flexShrink: 0 }}>A</div>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ fontWeight: 600, fontSize: '13px' }}>{r.target_agent?.name || '?'} <span className="badge" style={{ fontSize: '10px', marginLeft: '4px', background: 'rgba(16,185,129,0.15)', color: 'rgb(16,185,129)' }}>{r.relation_label}</span></div>
-                                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{r.target_agent?.role_description || 'Agent'}</div>
+                                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(16,185,129,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', flexShrink: 0 }}>A</div>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontWeight: 600, fontSize: '13px' }}>{r.target_agent?.name || '?'} <span className="badge" style={{ fontSize: '10px', marginLeft: '4px', background: 'rgba(16,185,129,0.15)', color: 'rgb(16,185,129)' }}>{r.relation_label}</span></div>
+                                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{r.target_agent?.role_description || 'Agent'}</div>
                                         {r.description && editingAgentId !== r.id && <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>{r.description}</div>}
-                                </div>
+                                    </div>
                                     {!readOnly && editingAgentId !== r.id && (
                                         <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
                                             <button className="btn btn-ghost" style={{ fontSize: '12px' }} onClick={() => startEditAgentRelationship(r)}>{t('common.edit', 'Edit')}</button>
@@ -1358,7 +1358,7 @@ function AgentDetailInner() {
     // ─── Channel config — Discord ────────────────────────
     const [discordForm, setDiscordForm] = useState({ application_id: '', bot_token: '', public_key: '' });
     const [discordEditing, setDiscordEditing] = useState(false);
-    
+
     // ─── Channel config — Microsoft Teams ────────────────────────
     const [teamsForm, setTeamsForm] = useState({ app_id: '', app_secret: '', tenant_id: '' });
     const [teamsEditing, setTeamsEditing] = useState(false);
@@ -1374,22 +1374,23 @@ function AgentDetailInner() {
     });
     const saveTeams = useMutation({
         mutationFn: () => fetchAuth(`/agents/${id}/teams-channel`, { method: 'POST', body: JSON.stringify(teamsForm) }),
-        onSuccess: () => { 
-            queryClient.invalidateQueries({ queryKey: ['teams-channel', id] }); 
-            queryClient.invalidateQueries({ queryKey: ['teams-webhook-url', id] }); 
-            setTeamsForm({ app_id: '', app_secret: '', tenant_id: '' }); 
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['teams-channel', id] });
+            queryClient.invalidateQueries({ queryKey: ['teams-webhook-url', id] });
+            setTeamsForm({ app_id: '', app_secret: '', tenant_id: '' });
         },
     });
     const deleteTeams = useMutation({
         mutationFn: () => fetchAuth(`/agents/${id}/teams-channel`, { method: 'DELETE' }),
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['teams-channel', id] }),
     });
-    
+
     // Collapsible state for channel settings sections
     const [slackOpen, setSlackOpen] = useState(false);
     const [discordOpen, setDiscordOpen] = useState(false);
     const [teamsOpen, setTeamsOpen] = useState(false);
     const [feishuOpen, setFeishuOpen] = useState(false);
+    const [atlassianOpen, setAtlassianOpen] = useState(false);
     // Shared password-field visibility map: key = field id, value = shown/hidden
     const [showPwds, setShowPwds] = useState<Record<string, boolean>>({});
     const togglePwd = (fieldId: string) => setShowPwds(p => ({ ...p, [fieldId]: !p[fieldId] }));
@@ -1966,7 +1967,7 @@ function AgentDetailInner() {
                                         transition: 'transform 0.15s',
                                         marginTop: '4px',
                                     }}>&#9654;</span>
-                        </div>
+                                </div>
 
                                 {/* Expanded content */}
                                 {isExpanded && (
@@ -1984,7 +1985,7 @@ function AgentDetailInner() {
                                                         <div style={{ flex: 1 }}>
                                                             <div style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-primary)' }}>
                                                                 {triggerToHuman(trig)}
-                                    </div>
+                                                            </div>
                                                             {trig.reason && <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '2px' }}>{trig.reason}</div>}
                                                             <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', marginTop: '2px', fontFamily: 'monospace' }}>
                                                                 {trig.type === 'cron' ? trig.config?.expr : ''}{' '}
@@ -2016,10 +2017,10 @@ function AgentDetailInner() {
                                                                 {t('common.delete', 'Delete')}
                                                             </button>
                                                         </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
 
                                         {/* Activity Logs for this focus */}
                                         {itemLogs.length > 0 && (
@@ -2027,7 +2028,7 @@ function AgentDetailInner() {
                                                 <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: '6px' }}>
                                                     {t('agent.aware.reflections')}
                                                 </div>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                                     {itemLogs.slice(0, 10).map((log: any) => (
                                                         <div key={log.id} style={{
                                                             padding: '6px 12px', borderRadius: '6px',
@@ -2035,7 +2036,7 @@ function AgentDetailInner() {
                                                             borderLeft: '2px solid var(--border-subtle)',
                                                         }}>
                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
-                                                        <span style={{
+                                                                <span style={{
                                                                     fontSize: '10px', padding: '1px 5px', borderRadius: '3px',
                                                                     background: log.action_type === 'trigger_fired' ? 'rgba(var(--accent-primary-rgb, 99,102,241), 0.1)' : 'var(--bg-tertiary, #e5e7eb)',
                                                                     color: log.action_type === 'trigger_fired' ? 'var(--accent-primary)' : 'var(--text-tertiary)',
@@ -2046,21 +2047,21 @@ function AgentDetailInner() {
                                                                 </span>
                                                             </div>
                                                             <div style={{ fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>{log.summary}</div>
-                                                    </div>
-                                                ))}
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
-                                        </div>
-                                    )}
+                                        )}
 
                                         {itemTriggers.length === 0 && itemLogs.length === 0 && (
                                             <div style={{ padding: '12px 0', fontSize: '12px', color: 'var(--text-tertiary)' }}>
                                                 {t('agent.aware.noTriggers')}
-                                        </div>
-                                    )}
+                                            </div>
+                                        )}
                                     </div>
-                                    )}
-                                </div>
-                            );
+                                )}
+                            </div>
+                        );
                     };
 
                     return (
@@ -2068,7 +2069,7 @@ function AgentDetailInner() {
                             {/* ── Focus Section ── */}
                             <div className="card" style={{ marginBottom: '16px', padding: '16px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                            <div>
+                                    <div>
                                         <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>{t('agent.aware.focus')}</h4>
                                         <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{t('agent.aware.focusDesc')}</span>
                                     </div>
@@ -2137,10 +2138,10 @@ function AgentDetailInner() {
                             {/* ── Standalone Triggers Card ── */}
                             {hasStandalone && (
                                 <div className="card" style={{ marginBottom: '16px', padding: '16px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                                         <div>
                                             <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>{t('agent.aware.standaloneTriggers')}</h4>
-                                </div>
+                                        </div>
                                         <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
                                             {standaloneTriggers.length} trigger{standaloneTriggers.length > 1 ? 's' : ''}
                                         </span>
@@ -2159,31 +2160,31 @@ function AgentDetailInner() {
                                                     {trig.reason && <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '2px' }}>{trig.reason}</div>}
                                                     <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', fontFamily: 'monospace', marginTop: '2px' }}>
                                                         {trig.name}{trig.type === 'cron' ? ` · ${trig.config?.expr}` : ''}
-                                                </div>
+                                                    </div>
                                                 </div>
                                                 <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
                                                     {t('agent.aware.fired', { count: trig.fire_count })}
-                                                    </span>
+                                                </span>
                                                 {!trig.is_enabled && (
                                                     <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>{t('agent.aware.disabled')}</span>
                                                 )}
-                                                    <div style={{ display: 'flex', gap: '4px' }}>
-                                                        <button className="btn btn-ghost" style={{ padding: '2px 6px', fontSize: '11px' }}
-                                                            onClick={async () => {
-                                                                await triggerApi.update(id!, trig.id, { is_enabled: !trig.is_enabled });
-                                                                refetchTriggers();
-                                                            }}>
+                                                <div style={{ display: 'flex', gap: '4px' }}>
+                                                    <button className="btn btn-ghost" style={{ padding: '2px 6px', fontSize: '11px' }}
+                                                        onClick={async () => {
+                                                            await triggerApi.update(id!, trig.id, { is_enabled: !trig.is_enabled });
+                                                            refetchTriggers();
+                                                        }}>
                                                         {trig.is_enabled ? t('agent.aware.disable') : t('agent.aware.enable')}
-                                                        </button>
-                                                        <button className="btn btn-ghost" style={{ padding: '2px 6px', fontSize: '11px', color: 'var(--error)' }}
-                                                            onClick={async () => {
+                                                    </button>
+                                                    <button className="btn btn-ghost" style={{ padding: '2px 6px', fontSize: '11px', color: 'var(--error)' }}
+                                                        onClick={async () => {
                                                             if (confirm(t('agent.aware.deleteTriggerConfirm', { name: trig.name }))) {
-                                                                    await triggerApi.delete(id!, trig.id);
-                                                                    refetchTriggers();
-                                                                }
-                                                            }}>
+                                                                await triggerApi.delete(id!, trig.id);
+                                                                refetchTriggers();
+                                                            }
+                                                        }}>
                                                         {t('common.delete', 'Delete')}
-                                                        </button>
+                                                    </button>
                                                 </div>
                                             </div>
                                         ))}
@@ -2199,9 +2200,9 @@ function AgentDetailInner() {
                                                 : (i18n.language?.startsWith('zh') ? `显示更多 ${standaloneTriggers.length - SECTION_PAGE_SIZE} 项...` : `Show ${standaloneTriggers.length - SECTION_PAGE_SIZE} more...`)
                                             }
                                         </button>
-                                )}
-                            </div>
-                        )}
+                                    )}
+                                </div>
+                            )}
 
                             {/* Raw markdown toggle */}
                             {raw && (
@@ -2215,17 +2216,17 @@ function AgentDetailInner() {
                             {pulseSessions.length > 0 && (() => {
                                 const visibleSessions = showAllReflections ? pulseSessions : pulseSessions.slice(0, SECTION_PAGE_SIZE);
                                 const hiddenCount = pulseSessions.length - visibleSessions.length;
-                            return (
+                                return (
                                     <div className="card" style={{ padding: '16px' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                                             <div>
                                                 <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>{t('agent.aware.reflections')}</h4>
                                                 <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{t('agent.aware.reflectionsDesc')}</span>
-                                    </div>
-                                                        <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                                            </div>
+                                            <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
                                                 {pulseSessions.length} session{pulseSessions.length > 1 ? 's' : ''}
-                                                        </span>
-                                                    </div>
+                                            </span>
+                                        </div>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                             {visibleSessions.map((session: any) => {
                                                 const isExpanded = expandedReflection === session.id;
@@ -2273,11 +2274,11 @@ function AgentDetailInner() {
                                                             <div style={{ flex: 1, minWidth: 0 }}>
                                                                 <div style={{ fontSize: '12px', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                                     {(session.title || 'Trigger execution').replace(/^🤖\s*/, '')}
-                                                </div>
+                                                                </div>
                                                                 <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', marginTop: '1px' }}>
                                                                     {new Date(session.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                                                     {session.message_count > 0 && ` · ${session.message_count} msg`}
-                                        </div>
+                                                                </div>
                                                             </div>
                                                             <span style={{
                                                                 fontSize: '11px', color: 'var(--text-tertiary)',
@@ -2337,8 +2338,8 @@ function AgentDetailInner() {
                                                                                                         <div style={{ borderTop: '1px dashed var(--border-subtle)', margin: '6px 0', opacity: 0.5 }} />
                                                                                                         <span style={{ color: 'var(--text-tertiary)' }}>→ </span>{resultStr.substring(0, 500)}
                                                                                                     </>
-                                    )}
-                                </div>
+                                                                                                )}
+                                                                                            </div>
                                                                                         )}
                                                                                     </Tag>
                                                                                 );
@@ -2348,7 +2349,7 @@ function AgentDetailInner() {
                                                                                 const tResult = msg.toolResult || msg.content || '';
                                                                                 const resultStr = typeof tResult === 'string' ? tResult : JSON.stringify(tResult, null, 2);
                                                                                 if (!resultStr) return null;
-                            return (
+                                                                                return (
                                                                                     <details key={mi} style={{ borderRadius: '6px', background: 'var(--bg-secondary)', overflow: 'hidden' }}>
                                                                                         <summary style={{
                                                                                             padding: '5px 10px',
@@ -2378,7 +2379,7 @@ function AgentDetailInner() {
                                                                                             color: 'var(--text-secondary)',
                                                                                         }}>
                                                                                             {resultStr.substring(0, 1000)}
-                                    </div>
+                                                                                        </div>
                                                                                     </details>
                                                                                 );
                                                                             }
@@ -2392,7 +2393,7 @@ function AgentDetailInner() {
                                                                                         maxHeight: '200px', overflow: 'auto',
                                                                                     }}>
                                                                                         {msg.content}
-                                        </div>
+                                                                                    </div>
                                                                                 );
                                                                             }
                                                                             if (msg.role === 'user') {
@@ -2412,12 +2413,12 @@ function AgentDetailInner() {
                                                                         })}
                                                                     </div>
                                                                 )}
-                                        </div>
-                                    )}
-                                </div>
-                            );
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
                                             })}
-                    </div>
+                                        </div>
                                         {pulseSessions.length > SECTION_PAGE_SIZE && (
                                             <button
                                                 onClick={(e) => { const collapse = showAllReflections; setShowAllReflections(!showAllReflections); if (collapse) e.currentTarget.closest('.card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}
@@ -2729,14 +2730,14 @@ function AgentDetailInner() {
                                                                     discord: t('common.channels.discord'),
                                                                     slack: t('common.channels.slack'),
                                                                 } as Record<string, string>)[s.source_channel] && (
-                                                                    <span style={{ fontSize: '9px', padding: '1px 4px', borderRadius: '3px', background: 'var(--bg-tertiary)', color: 'var(--text-tertiary)', flexShrink: 0 }}>
+                                                                        <span style={{ fontSize: '9px', padding: '1px 4px', borderRadius: '3px', background: 'var(--bg-tertiary)', color: 'var(--text-tertiary)', flexShrink: 0 }}>
                                                                             {({
                                                                                 feishu: t('common.channels.feishu'),
                                                                                 discord: t('common.channels.discord'),
                                                                                 slack: t('common.channels.slack'),
                                                                             } as Record<string, string>)[s.source_channel]}
-                                                                    </span>
-                                                                )}
+                                                                        </span>
+                                                                    )}
                                                             </div>
                                                             <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', display: 'flex', gap: '4px' }}>
                                                                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{s.username || ''}</span>
@@ -2761,74 +2762,74 @@ function AgentDetailInner() {
                                     /* ── Read-only history view (other user's session or agent-to-agent) ── */
                                     <>
                                         <div ref={historyContainerRef} onScroll={handleHistoryScroll} style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
-                                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginBottom: '12px', padding: '4px 8px', background: 'var(--bg-secondary)', borderRadius: '4px', display: 'inline-block' }}>
-                                            {activeSession.source_channel === 'agent' ? `🤖 Agent Conversation · ${activeSession.username || 'Agents'}` : `Read-only · ${activeSession.username || 'User'}`}
-                                        </div>
-                                        {historyMsgs.map((m: any, i: number) => {
-                                            if (m.role === 'tool_call') {
-                                                let parsed: any = {}; try { parsed = typeof m.content === 'string' ? JSON.parse(m.content) : m.content; } catch { parsed = { name: 'tool', result: m.content }; }
+                                            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginBottom: '12px', padding: '4px 8px', background: 'var(--bg-secondary)', borderRadius: '4px', display: 'inline-block' }}>
+                                                {activeSession.source_channel === 'agent' ? `🤖 Agent Conversation · ${activeSession.username || 'Agents'}` : `Read-only · ${activeSession.username || 'User'}`}
+                                            </div>
+                                            {historyMsgs.map((m: any, i: number) => {
+                                                if (m.role === 'tool_call') {
+                                                    let parsed: any = {}; try { parsed = typeof m.content === 'string' ? JSON.parse(m.content) : m.content; } catch { parsed = { name: 'tool', result: m.content }; }
+                                                    return (
+                                                        <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '6px', paddingLeft: '36px', minWidth: 0 }}>
+                                                            <details style={{ flex: 1, minWidth: 0, borderRadius: '8px', background: 'var(--accent-subtle)', border: '1px solid var(--accent-subtle)', fontSize: '12px', overflow: 'hidden' }}>
+                                                                <summary style={{ padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', userSelect: 'none', listStyle: 'none', overflow: 'hidden' }}>
+                                                                    <span style={{ fontWeight: 600, color: 'var(--accent-text)' }}>{parsed.name || 'tool'}</span>
+                                                                    <span style={{ color: 'var(--text-tertiary)', fontSize: '11px', marginLeft: 'auto' }}>done</span>
+                                                                </summary>
+                                                                {parsed.result && <div style={{ padding: '4px 10px 8px', color: 'var(--text-secondary)', fontSize: '11px', fontFamily: 'var(--font-mono)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: '160px', overflow: 'auto' }}>{parsed.result}</div>}
+                                                            </details>
+                                                        </div>
+                                                    );
+                                                }
                                                 return (
-                                                    <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '6px', paddingLeft: '36px', minWidth: 0 }}>
-                                                        <details style={{ flex: 1, minWidth: 0, borderRadius: '8px', background: 'var(--accent-subtle)', border: '1px solid var(--accent-subtle)', fontSize: '12px', overflow: 'hidden' }}>
-                                                            <summary style={{ padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', userSelect: 'none', listStyle: 'none', overflow: 'hidden' }}>
-                                                                <span style={{ fontWeight: 600, color: 'var(--accent-text)' }}>{parsed.name || 'tool'}</span>
-                                                                <span style={{ color: 'var(--text-tertiary)', fontSize: '11px', marginLeft: 'auto' }}>done</span>
-                                                            </summary>
-                                                            {parsed.result && <div style={{ padding: '4px 10px 8px', color: 'var(--text-secondary)', fontSize: '11px', fontFamily: 'var(--font-mono)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: '160px', overflow: 'auto' }}>{parsed.result}</div>}
-                                                        </details>
+                                                    <div key={i} style={{ display: 'flex', flexDirection: m.role === 'assistant' ? 'row' : 'row-reverse', gap: '8px', marginBottom: '8px' }}>
+                                                        <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: m.role === 'assistant' ? 'var(--bg-elevated)' : 'rgba(16,185,129,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', flexShrink: 0, color: 'var(--text-secondary)', fontWeight: 600 }}>{m.sender_name ? m.sender_name[0] : (m.role === 'assistant' ? 'A' : 'U')}</div>
+                                                        <div style={{ maxWidth: '70%', padding: '8px 12px', borderRadius: '12px', background: m.role === 'assistant' ? 'var(--bg-secondary)' : 'rgba(16,185,129,0.1)', fontSize: '13px', lineHeight: '1.5', wordBreak: 'break-word' }}>
+                                                            {m.sender_name && <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', marginBottom: '2px', fontWeight: 600 }}>🤖 {m.sender_name}</div>}
+                                                            {(() => {
+                                                                const pm = parseChatMsg({ role: m.role as ChatMsg['role'], content: m.content || '' });
+                                                                const fe = pm.fileName?.split('.').pop()?.toLowerCase() ?? '';
+                                                                const fi = fe === 'pdf' ? '📄' : (fe === 'csv' || fe === 'xlsx' || fe === 'xls') ? '📊' : (fe === 'docx' || fe === 'doc') ? '📝' : '📎';
+                                                                return (
+                                                                    <>
+                                                                        {m.thinking && (
+                                                                            <details style={{
+                                                                                marginBottom: '8px', fontSize: '12px',
+                                                                                background: 'rgba(147, 130, 220, 0.08)', borderRadius: '6px',
+                                                                                border: '1px solid rgba(147, 130, 220, 0.15)',
+                                                                            }}>
+                                                                                <summary style={{
+                                                                                    padding: '6px 10px', cursor: 'pointer',
+                                                                                    color: 'rgba(147, 130, 220, 0.9)', fontWeight: 500,
+                                                                                    userSelect: 'none', display: 'flex', alignItems: 'center', gap: '4px',
+                                                                                }}>
+                                                                                    💭 Thinking
+                                                                                </summary>
+                                                                                <div style={{
+                                                                                    padding: '4px 10px 8px',
+                                                                                    fontSize: '12px', lineHeight: '1.6',
+                                                                                    color: 'var(--text-secondary)',
+                                                                                    whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                                                                                    maxHeight: '300px', overflow: 'auto',
+                                                                                }}>
+                                                                                    {m.thinking}
+                                                                                </div>
+                                                                            </details>
+                                                                        )}
+                                                                        {pm.fileName && (
+                                                                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: 'var(--bg-elevated)', borderRadius: '6px', padding: '4px 8px', marginBottom: pm.content ? '4px' : '0', fontSize: '11px', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>
+                                                                                <span>{fi}</span>
+                                                                                <span style={{ fontWeight: 500, color: 'var(--text-primary)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pm.fileName}</span>
+                                                                            </div>
+                                                                        )}
+                                                                        {pm.content ? (m.role === 'assistant' ? <MarkdownRenderer content={pm.content} /> : <div style={{ whiteSpace: 'pre-wrap' }}>{pm.content}</div>) : null}
+                                                                    </>
+                                                                );
+                                                            })()}
+                                                        </div>
                                                     </div>
                                                 );
-                                            }
-                                            return (
-                                                <div key={i} style={{ display: 'flex', flexDirection: m.role === 'assistant' ? 'row' : 'row-reverse', gap: '8px', marginBottom: '8px' }}>
-                                                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: m.role === 'assistant' ? 'var(--bg-elevated)' : 'rgba(16,185,129,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', flexShrink: 0, color: 'var(--text-secondary)', fontWeight: 600 }}>{m.sender_name ? m.sender_name[0] : (m.role === 'assistant' ? 'A' : 'U')}</div>
-                                                    <div style={{ maxWidth: '70%', padding: '8px 12px', borderRadius: '12px', background: m.role === 'assistant' ? 'var(--bg-secondary)' : 'rgba(16,185,129,0.1)', fontSize: '13px', lineHeight: '1.5', wordBreak: 'break-word' }}>
-                                                        {m.sender_name && <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', marginBottom: '2px', fontWeight: 600 }}>🤖 {m.sender_name}</div>}
-                                                        {(() => {
-                                                            const pm = parseChatMsg({ role: m.role as ChatMsg['role'], content: m.content || '' });
-                                                            const fe = pm.fileName?.split('.').pop()?.toLowerCase() ?? '';
-                                                            const fi = fe === 'pdf' ? '📄' : (fe === 'csv' || fe === 'xlsx' || fe === 'xls') ? '📊' : (fe === 'docx' || fe === 'doc') ? '📝' : '📎';
-                                                            return (
-                                                                <>
-                                                                    {m.thinking && (
-                                                                        <details style={{
-                                                                            marginBottom: '8px', fontSize: '12px',
-                                                                            background: 'rgba(147, 130, 220, 0.08)', borderRadius: '6px',
-                                                                            border: '1px solid rgba(147, 130, 220, 0.15)',
-                                                                        }}>
-                                                                            <summary style={{
-                                                                                padding: '6px 10px', cursor: 'pointer',
-                                                                                color: 'rgba(147, 130, 220, 0.9)', fontWeight: 500,
-                                                                                userSelect: 'none', display: 'flex', alignItems: 'center', gap: '4px',
-                                                                            }}>
-                                                                                💭 Thinking
-                                                                            </summary>
-                                                                            <div style={{
-                                                                                padding: '4px 10px 8px',
-                                                                                fontSize: '12px', lineHeight: '1.6',
-                                                                                color: 'var(--text-secondary)',
-                                                                                whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                                                                                maxHeight: '300px', overflow: 'auto',
-                                                                            }}>
-                                                                                {m.thinking}
-                                                                            </div>
-                                                                        </details>
-                                                                    )}
-                                                                    {pm.fileName && (
-                                                                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: 'var(--bg-elevated)', borderRadius: '6px', padding: '4px 8px', marginBottom: pm.content ? '4px' : '0', fontSize: '11px', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>
-                                                                            <span>{fi}</span>
-                                                                            <span style={{ fontWeight: 500, color: 'var(--text-primary)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pm.fileName}</span>
-                                                                        </div>
-                                                                    )}
-                                                                    {pm.content ? (m.role === 'assistant' ? <MarkdownRenderer content={pm.content} /> : <div style={{ whiteSpace: 'pre-wrap' }}>{pm.content}</div>) : null}
-                                                                </>
-                                                            );
-                                                        })()}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
+                                            })}
+                                        </div>
                                         {showHistoryScrollBtn && (
                                             <button onClick={scrollHistoryToBottom} style={{ position: 'absolute', bottom: '20px', right: '20px', width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.3)', zIndex: 10 }} title="Scroll to bottom">↓</button>
                                         )}
@@ -3762,85 +3763,85 @@ function AgentDetailInner() {
                                                 </div>
                                             </div>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            {slackConfig && <span className={`badge ${slackConfig.is_configured ? 'badge-success' : 'badge-warning'}`}>{slackConfig.is_configured ? t('agent.settings.channel.configured') : t('agent.settings.channel.notConfigured')}</span>}
+                                                {slackConfig && <span className={`badge ${slackConfig.is_configured ? 'badge-success' : 'badge-warning'}`}>{slackConfig.is_configured ? t('agent.settings.channel.configured') : t('agent.settings.channel.notConfigured')}</span>}
                                                 <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', transition: 'transform 0.2s', transform: slackOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
-                                        </div>
+                                            </div>
                                         </div>
                                         {slackOpen && (<div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border-subtle)' }}>
-                                        {!canManage ? (
-                                            <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', fontStyle: 'italic', padding: '12px', background: 'var(--bg-secondary)', borderRadius: '6px' }}>
-                                                Only the creator or admin can configure communication channels.
-                                            </div>
-                                        ) : slackConfig?.is_configured && !slackEditing ? (
-                                            <div>
-                                                <div style={{ background: 'var(--bg-secondary)', borderRadius: '6px', padding: '10px', fontSize: '12px', fontFamily: 'var(--font-mono)', marginBottom: '12px' }}>
-                                                    <div style={{ color: 'var(--text-tertiary)', marginBottom: '6px' }}>Webhook URL (Event Subscriptions URL)</div>
-                                                    <div style={{ lineHeight: 1.6, wordBreak: 'break-all' }}>
-                                                        <span style={{ color: 'var(--accent-primary)' }}>{slackWebhookData?.webhook_url || `${window.location.origin}/api/channel/slack/${id}/webhook`}</span>
-                                                        <CopyBtn url={slackWebhookData?.webhook_url || `${window.location.origin}/api/channel/slack/${id}/webhook`} />
-                                                    </div>
+                                            {!canManage ? (
+                                                <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', fontStyle: 'italic', padding: '12px', background: 'var(--bg-secondary)', borderRadius: '6px' }}>
+                                                    Only the creator or admin can configure communication channels.
                                                 </div>
-                                                <details style={{ marginBottom: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                                                    <summary style={{ cursor: 'pointer', fontWeight: 500, color: 'var(--text-primary)', userSelect: 'none', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                        <span style={{ fontSize: '10px' }}>▶</span> {t('channelGuide.setupGuide')}
-                                                    </summary>
-                                                    <ol style={{ paddingLeft: '16px', margin: '8px 0', lineHeight: 1.9 }}>
-                                                        <li>{t('channelGuide.slack.step1')}</li>
-                                                        <li>{t('channelGuide.slack.step2')}</li>
-                                                        <li>{t('channelGuide.slack.step3')}</li>
-                                                        <li>{t('channelGuide.slack.step4')}</li>
-                                                        <li>{t('channelGuide.slack.step5')}</li>
-                                                        <li>{t('channelGuide.slack.step6')}</li>
-                                                        <li>{t('channelGuide.slack.step7')}</li>
-                                                        <li>{t('channelGuide.slack.step8')}</li>
-                                                    </ol>
-                                                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', background: 'var(--bg-secondary)', padding: '6px 10px', borderRadius: '6px' }}>💡 {t('channelGuide.slack.note')}</div>
-                                                </details>
-                                                <div style={{ display: 'flex', gap: '8px' }}>
-                                                    <button className="btn btn-secondary" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => { setSlackForm({ bot_token: slackConfig?.app_secret || '', signing_secret: slackConfig?.encrypt_key || '' }); setSlackEditing(true); }}>Edit</button>
-                                                    <button className="btn btn-danger" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => deleteSlack.mutate()}>Disconnect</button>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                            ) : slackConfig?.is_configured && !slackEditing ? (
                                                 <div>
-                                                    <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Bot Token *</label>
-                                                    <div style={{ position: 'relative' }}>
-                                                        <input className="input" type={showPwds['slack_token'] ? 'text' : 'password'} value={slackForm.bot_token} onChange={e => setSlackForm({ ...slackForm, bot_token: e.target.value })} placeholder="xoxb-..." style={{ fontSize: '12px', paddingRight: '36px', width: '100%' }} />
-                                                        <button type="button" onClick={() => togglePwd('slack_token')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '2px', display: 'flex', alignItems: 'center' }}>{showPwds['slack_token'] ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>}</button>
+                                                    <div style={{ background: 'var(--bg-secondary)', borderRadius: '6px', padding: '10px', fontSize: '12px', fontFamily: 'var(--font-mono)', marginBottom: '12px' }}>
+                                                        <div style={{ color: 'var(--text-tertiary)', marginBottom: '6px' }}>Webhook URL (Event Subscriptions URL)</div>
+                                                        <div style={{ lineHeight: 1.6, wordBreak: 'break-all' }}>
+                                                            <span style={{ color: 'var(--accent-primary)' }}>{slackWebhookData?.webhook_url || `${window.location.origin}/api/channel/slack/${id}/webhook`}</span>
+                                                            <CopyBtn url={slackWebhookData?.webhook_url || `${window.location.origin}/api/channel/slack/${id}/webhook`} />
+                                                        </div>
+                                                    </div>
+                                                    <details style={{ marginBottom: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                                        <summary style={{ cursor: 'pointer', fontWeight: 500, color: 'var(--text-primary)', userSelect: 'none', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                            <span style={{ fontSize: '10px' }}>▶</span> {t('channelGuide.setupGuide')}
+                                                        </summary>
+                                                        <ol style={{ paddingLeft: '16px', margin: '8px 0', lineHeight: 1.9 }}>
+                                                            <li>{t('channelGuide.slack.step1')}</li>
+                                                            <li>{t('channelGuide.slack.step2')}</li>
+                                                            <li>{t('channelGuide.slack.step3')}</li>
+                                                            <li>{t('channelGuide.slack.step4')}</li>
+                                                            <li>{t('channelGuide.slack.step5')}</li>
+                                                            <li>{t('channelGuide.slack.step6')}</li>
+                                                            <li>{t('channelGuide.slack.step7')}</li>
+                                                            <li>{t('channelGuide.slack.step8')}</li>
+                                                        </ol>
+                                                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', background: 'var(--bg-secondary)', padding: '6px 10px', borderRadius: '6px' }}>💡 {t('channelGuide.slack.note')}</div>
+                                                    </details>
+                                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                                        <button className="btn btn-secondary" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => { setSlackForm({ bot_token: slackConfig?.app_secret || '', signing_secret: slackConfig?.encrypt_key || '' }); setSlackEditing(true); }}>Edit</button>
+                                                        <button className="btn btn-danger" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => deleteSlack.mutate()}>Disconnect</button>
                                                     </div>
                                                 </div>
-                                                <div>
-                                                    <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Signing Secret *</label>
-                                                    <div style={{ position: 'relative' }}>
-                                                        <input className="input" type={showPwds['slack_secret'] ? 'text' : 'password'} value={slackForm.signing_secret} onChange={e => setSlackForm({ ...slackForm, signing_secret: e.target.value })} style={{ fontSize: '12px', paddingRight: '36px', width: '100%' }} />
-                                                        <button type="button" onClick={() => togglePwd('slack_secret')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '2px', display: 'flex', alignItems: 'center' }}>{showPwds['slack_secret'] ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>}</button>
+                                            ) : (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                    <div>
+                                                        <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Bot Token *</label>
+                                                        <div style={{ position: 'relative' }}>
+                                                            <input className="input" type={showPwds['slack_token'] ? 'text' : 'password'} value={slackForm.bot_token} onChange={e => setSlackForm({ ...slackForm, bot_token: e.target.value })} placeholder="xoxb-..." style={{ fontSize: '12px', paddingRight: '36px', width: '100%' }} />
+                                                            <button type="button" onClick={() => togglePwd('slack_token')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '2px', display: 'flex', alignItems: 'center' }}>{showPwds['slack_token'] ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>}</button>
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Signing Secret *</label>
+                                                        <div style={{ position: 'relative' }}>
+                                                            <input className="input" type={showPwds['slack_secret'] ? 'text' : 'password'} value={slackForm.signing_secret} onChange={e => setSlackForm({ ...slackForm, signing_secret: e.target.value })} style={{ fontSize: '12px', paddingRight: '36px', width: '100%' }} />
+                                                            <button type="button" onClick={() => togglePwd('slack_secret')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '2px', display: 'flex', alignItems: 'center' }}>{showPwds['slack_secret'] ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>}</button>
+                                                        </div>
+                                                    </div>
+                                                    <details style={{ marginBottom: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                                        <summary style={{ cursor: 'pointer', fontWeight: 500, color: 'var(--text-primary)', userSelect: 'none', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                            <span style={{ fontSize: '10px' }}>▶</span> {t('channelGuide.setupGuide')}
+                                                        </summary>
+                                                        <ol style={{ paddingLeft: '16px', margin: '8px 0', lineHeight: 1.9 }}>
+                                                            <li>{t('channelGuide.slack.step1')}</li>
+                                                            <li>{t('channelGuide.slack.step2')}</li>
+                                                            <li>{t('channelGuide.slack.step3')}</li>
+                                                            <li>{t('channelGuide.slack.step4')}</li>
+                                                            <li>{t('channelGuide.slack.step5')}</li>
+                                                            <li>{t('channelGuide.slack.step6')}</li>
+                                                            <li>{t('channelGuide.slack.step7')}</li>
+                                                            <li>{t('channelGuide.slack.step8')}</li>
+                                                        </ol>
+                                                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', background: 'var(--bg-secondary)', padding: '6px 10px', borderRadius: '6px' }}>💡 {t('channelGuide.slack.note')}</div>
+                                                    </details>
+                                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                                        <button className="btn btn-primary" style={{ fontSize: '12px', alignSelf: 'flex-start' }} onClick={() => { saveSlack.mutate(); setSlackEditing(false); }} disabled={!slackForm.bot_token || !slackForm.signing_secret || saveSlack.isPending}>
+                                                            {saveSlack.isPending ? t('common.loading') : (slackEditing ? 'Save Changes' : t('agent.settings.channel.saveChannel'))}
+                                                        </button>
+                                                        {slackEditing && <button className="btn btn-secondary" style={{ fontSize: '12px' }} onClick={() => setSlackEditing(false)}>Cancel</button>}
                                                     </div>
                                                 </div>
-                                                <details style={{ marginBottom: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                                                    <summary style={{ cursor: 'pointer', fontWeight: 500, color: 'var(--text-primary)', userSelect: 'none', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                        <span style={{ fontSize: '10px' }}>▶</span> {t('channelGuide.setupGuide')}
-                                                    </summary>
-                                                    <ol style={{ paddingLeft: '16px', margin: '8px 0', lineHeight: 1.9 }}>
-                                                        <li>{t('channelGuide.slack.step1')}</li>
-                                                        <li>{t('channelGuide.slack.step2')}</li>
-                                                        <li>{t('channelGuide.slack.step3')}</li>
-                                                        <li>{t('channelGuide.slack.step4')}</li>
-                                                        <li>{t('channelGuide.slack.step5')}</li>
-                                                        <li>{t('channelGuide.slack.step6')}</li>
-                                                        <li>{t('channelGuide.slack.step7')}</li>
-                                                        <li>{t('channelGuide.slack.step8')}</li>
-                                                    </ol>
-                                                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', background: 'var(--bg-secondary)', padding: '6px 10px', borderRadius: '6px' }}>💡 {t('channelGuide.slack.note')}</div>
-                                                </details>
-                                                <div style={{ display: 'flex', gap: '8px' }}>
-                                                    <button className="btn btn-primary" style={{ fontSize: '12px', alignSelf: 'flex-start' }} onClick={() => { saveSlack.mutate(); setSlackEditing(false); }} disabled={!slackForm.bot_token || !slackForm.signing_secret || saveSlack.isPending}>
-                                                        {saveSlack.isPending ? t('common.loading') : (slackEditing ? 'Save Changes' : t('agent.settings.channel.saveChannel'))}
-                                                    </button>
-                                                    {slackEditing && <button className="btn btn-secondary" style={{ fontSize: '12px' }} onClick={() => setSlackEditing(false)}>Cancel</button>}
-                                                </div>
-                                            </div>
-                                        )}
+                                            )}
                                         </div>)}
                                     </div>
 
@@ -3855,85 +3856,85 @@ function AgentDetailInner() {
                                                 </div>
                                             </div>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            {discordConfig && <span className={`badge ${discordConfig.is_configured ? 'badge-success' : 'badge-warning'}`}>{discordConfig.is_configured ? t('agent.settings.channel.configured') : t('agent.settings.channel.notConfigured')}</span>}
+                                                {discordConfig && <span className={`badge ${discordConfig.is_configured ? 'badge-success' : 'badge-warning'}`}>{discordConfig.is_configured ? t('agent.settings.channel.configured') : t('agent.settings.channel.notConfigured')}</span>}
                                                 <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', transition: 'transform 0.2s', transform: discordOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
-                                        </div>
+                                            </div>
                                         </div>
                                         {discordOpen && (<div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border-subtle)' }}>
-                                        {!canManage ? (
-                                            <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', fontStyle: 'italic', padding: '12px', background: 'var(--bg-secondary)', borderRadius: '6px' }}>
-                                                Only the creator or admin can configure communication channels.
-                                            </div>
-                                        ) : discordConfig?.is_configured && !discordEditing ? (
-                                            <div>
-                                                <div style={{ background: 'var(--bg-secondary)', borderRadius: '6px', padding: '10px', fontSize: '12px', fontFamily: 'var(--font-mono)', marginBottom: '12px' }}>
-                                                    <div style={{ color: 'var(--text-tertiary)', marginBottom: '6px' }}>Interactions Endpoint URL</div>
-                                                    <div style={{ lineHeight: 1.6, wordBreak: 'break-all' }}>
-                                                        <span style={{ color: 'var(--accent-primary)' }}>{discordWebhookData?.webhook_url || `${window.location.origin}/api/channel/discord/${id}/webhook`}</span>
-                                                        <CopyBtn url={discordWebhookData?.webhook_url || `${window.location.origin}/api/channel/discord/${id}/webhook`} />
+                                            {!canManage ? (
+                                                <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', fontStyle: 'italic', padding: '12px', background: 'var(--bg-secondary)', borderRadius: '6px' }}>
+                                                    Only the creator or admin can configure communication channels.
+                                                </div>
+                                            ) : discordConfig?.is_configured && !discordEditing ? (
+                                                <div>
+                                                    <div style={{ background: 'var(--bg-secondary)', borderRadius: '6px', padding: '10px', fontSize: '12px', fontFamily: 'var(--font-mono)', marginBottom: '12px' }}>
+                                                        <div style={{ color: 'var(--text-tertiary)', marginBottom: '6px' }}>Interactions Endpoint URL</div>
+                                                        <div style={{ lineHeight: 1.6, wordBreak: 'break-all' }}>
+                                                            <span style={{ color: 'var(--accent-primary)' }}>{discordWebhookData?.webhook_url || `${window.location.origin}/api/channel/discord/${id}/webhook`}</span>
+                                                            <CopyBtn url={discordWebhookData?.webhook_url || `${window.location.origin}/api/channel/discord/${id}/webhook`} />
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginBottom: '8px' }}>Use <code>/ask message:&lt;your question&gt;</code> to talk to this agent</div>
+                                                    <details style={{ marginBottom: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                                        <summary style={{ cursor: 'pointer', fontWeight: 500, color: 'var(--text-primary)', userSelect: 'none', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                            <span style={{ fontSize: '10px' }}>▶</span> {t('channelGuide.setupGuide')}
+                                                        </summary>
+                                                        <ol style={{ paddingLeft: '16px', margin: '8px 0', lineHeight: 1.9 }}>
+                                                            <li>{t('channelGuide.discord.step1')}</li>
+                                                            <li>{t('channelGuide.discord.step2')}</li>
+                                                            <li>{t('channelGuide.discord.step3')}</li>
+                                                            <li>{t('channelGuide.discord.step4')}</li>
+                                                            <li>{t('channelGuide.discord.step5')}</li>
+                                                            <li>{t('channelGuide.discord.step6')}</li>
+                                                            <li>{t('channelGuide.discord.step7')}</li>
+                                                        </ol>
+                                                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', background: 'var(--bg-secondary)', padding: '6px 10px', borderRadius: '6px' }}>💡 {t('channelGuide.discord.note')}</div>
+                                                    </details>
+                                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                                        <button className="btn btn-secondary" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => { setDiscordForm({ application_id: discordConfig?.app_id || '', bot_token: discordConfig?.app_secret || '', public_key: discordConfig?.encrypt_key || '' }); setDiscordEditing(true); }}>Edit</button>
+                                                        <button className="btn btn-danger" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => deleteDiscord.mutate()}>Disconnect</button>
                                                     </div>
                                                 </div>
-                                                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginBottom: '8px' }}>Use <code>/ask message:&lt;your question&gt;</code> to talk to this agent</div>
-                                                <details style={{ marginBottom: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                                                    <summary style={{ cursor: 'pointer', fontWeight: 500, color: 'var(--text-primary)', userSelect: 'none', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                        <span style={{ fontSize: '10px' }}>▶</span> {t('channelGuide.setupGuide')}
-                                                    </summary>
-                                                    <ol style={{ paddingLeft: '16px', margin: '8px 0', lineHeight: 1.9 }}>
-                                                        <li>{t('channelGuide.discord.step1')}</li>
-                                                        <li>{t('channelGuide.discord.step2')}</li>
-                                                        <li>{t('channelGuide.discord.step3')}</li>
-                                                        <li>{t('channelGuide.discord.step4')}</li>
-                                                        <li>{t('channelGuide.discord.step5')}</li>
-                                                        <li>{t('channelGuide.discord.step6')}</li>
-                                                        <li>{t('channelGuide.discord.step7')}</li>
-                                                    </ol>
-                                                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', background: 'var(--bg-secondary)', padding: '6px 10px', borderRadius: '6px' }}>💡 {t('channelGuide.discord.note')}</div>
-                                                </details>
-                                                <div style={{ display: 'flex', gap: '8px' }}>
-                                                    <button className="btn btn-secondary" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => { setDiscordForm({ application_id: discordConfig?.app_id || '', bot_token: discordConfig?.app_secret || '', public_key: discordConfig?.encrypt_key || '' }); setDiscordEditing(true); }}>Edit</button>
-                                                    <button className="btn btn-danger" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => deleteDiscord.mutate()}>Disconnect</button>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                                <div>
-                                                    <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Application ID *</label>
-                                                    <input className="input" value={discordForm.application_id} onChange={e => setDiscordForm({ ...discordForm, application_id: e.target.value })} placeholder="1234567890" style={{ fontSize: '12px' }} />
-                                                </div>
-                                                <div>
-                                                    <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Bot Token *</label>
-                                                    <div style={{ position: 'relative' }}>
-                                                        <input className="input" type={showPwds['disc_token'] ? 'text' : 'password'} value={discordForm.bot_token} onChange={e => setDiscordForm({ ...discordForm, bot_token: e.target.value })} style={{ fontSize: '12px', paddingRight: '36px', width: '100%' }} />
-                                                        <button type="button" onClick={() => togglePwd('disc_token')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '2px', display: 'flex', alignItems: 'center' }}>{showPwds['disc_token'] ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>}</button>
+                                            ) : (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                    <div>
+                                                        <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Application ID *</label>
+                                                        <input className="input" value={discordForm.application_id} onChange={e => setDiscordForm({ ...discordForm, application_id: e.target.value })} placeholder="1234567890" style={{ fontSize: '12px' }} />
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Bot Token *</label>
+                                                        <div style={{ position: 'relative' }}>
+                                                            <input className="input" type={showPwds['disc_token'] ? 'text' : 'password'} value={discordForm.bot_token} onChange={e => setDiscordForm({ ...discordForm, bot_token: e.target.value })} style={{ fontSize: '12px', paddingRight: '36px', width: '100%' }} />
+                                                            <button type="button" onClick={() => togglePwd('disc_token')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '2px', display: 'flex', alignItems: 'center' }}>{showPwds['disc_token'] ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>}</button>
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Public Key *</label>
+                                                        <input className="input" value={discordForm.public_key} onChange={e => setDiscordForm({ ...discordForm, public_key: e.target.value })} style={{ fontSize: '12px' }} />
+                                                    </div>
+                                                    <details style={{ marginBottom: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                                        <summary style={{ cursor: 'pointer', fontWeight: 500, color: 'var(--text-primary)', userSelect: 'none', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                            <span style={{ fontSize: '10px' }}>▶</span> {t('channelGuide.setupGuide')}
+                                                        </summary>
+                                                        <ol style={{ paddingLeft: '16px', margin: '8px 0', lineHeight: 1.9 }}>
+                                                            <li>{t('channelGuide.discord.step1')}</li>
+                                                            <li>{t('channelGuide.discord.step2')}</li>
+                                                            <li>{t('channelGuide.discord.step3')}</li>
+                                                            <li>{t('channelGuide.discord.step4')}</li>
+                                                            <li>{t('channelGuide.discord.step5')}</li>
+                                                            <li>{t('channelGuide.discord.step6')}</li>
+                                                            <li>{t('channelGuide.discord.step7')}</li>
+                                                        </ol>
+                                                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', background: 'var(--bg-secondary)', padding: '6px 10px', borderRadius: '6px' }}>💡 {t('channelGuide.discord.note')}</div>
+                                                    </details>
+                                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                                        <button className="btn btn-primary" style={{ fontSize: '12px', alignSelf: 'flex-start' }} onClick={() => { saveDiscord.mutate(); setDiscordEditing(false); }} disabled={!discordForm.application_id || !discordForm.bot_token || !discordForm.public_key || saveDiscord.isPending}>
+                                                            {saveDiscord.isPending ? t('common.loading') : (discordEditing ? 'Save Changes' : t('agent.settings.channel.saveChannel'))}
+                                                        </button>
+                                                        {discordEditing && <button className="btn btn-secondary" style={{ fontSize: '12px' }} onClick={() => setDiscordEditing(false)}>Cancel</button>}
                                                     </div>
                                                 </div>
-                                                <div>
-                                                    <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Public Key *</label>
-                                                    <input className="input" value={discordForm.public_key} onChange={e => setDiscordForm({ ...discordForm, public_key: e.target.value })} style={{ fontSize: '12px' }} />
-                                                </div>
-                                                <details style={{ marginBottom: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                                                    <summary style={{ cursor: 'pointer', fontWeight: 500, color: 'var(--text-primary)', userSelect: 'none', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                        <span style={{ fontSize: '10px' }}>▶</span> {t('channelGuide.setupGuide')}
-                                                    </summary>
-                                                    <ol style={{ paddingLeft: '16px', margin: '8px 0', lineHeight: 1.9 }}>
-                                                        <li>{t('channelGuide.discord.step1')}</li>
-                                                        <li>{t('channelGuide.discord.step2')}</li>
-                                                        <li>{t('channelGuide.discord.step3')}</li>
-                                                        <li>{t('channelGuide.discord.step4')}</li>
-                                                        <li>{t('channelGuide.discord.step5')}</li>
-                                                        <li>{t('channelGuide.discord.step6')}</li>
-                                                        <li>{t('channelGuide.discord.step7')}</li>
-                                                    </ol>
-                                                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', background: 'var(--bg-secondary)', padding: '6px 10px', borderRadius: '6px' }}>💡 {t('channelGuide.discord.note')}</div>
-                                                </details>
-                                                <div style={{ display: 'flex', gap: '8px' }}>
-                                                    <button className="btn btn-primary" style={{ fontSize: '12px', alignSelf: 'flex-start' }} onClick={() => { saveDiscord.mutate(); setDiscordEditing(false); }} disabled={!discordForm.application_id || !discordForm.bot_token || !discordForm.public_key || saveDiscord.isPending}>
-                                                        {saveDiscord.isPending ? t('common.loading') : (discordEditing ? 'Save Changes' : t('agent.settings.channel.saveChannel'))}
-                                                    </button>
-                                                    {discordEditing && <button className="btn btn-secondary" style={{ fontSize: '12px' }} onClick={() => setDiscordEditing(false)}>Cancel</button>}
-                                                </div>
-                                            </div>
-                                        )}
+                                            )}
                                         </div>)}
                                     </div>
 
@@ -3949,153 +3950,73 @@ function AgentDetailInner() {
                                                 </div>
                                             </div>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            {channelConfig && (
-                                                <span className={`badge ${channelConfig.is_configured ? 'badge-success' : 'badge-warning'}`}>
-                                                    {channelConfig.is_configured ? t('agent.settings.channel.configured') : t('agent.settings.channel.notConfigured')}
-                                                </span>
-                                            )}
+                                                {channelConfig && (
+                                                    <span className={`badge ${channelConfig.is_configured ? 'badge-success' : 'badge-warning'}`}>
+                                                        {channelConfig.is_configured ? t('agent.settings.channel.configured') : t('agent.settings.channel.notConfigured')}
+                                                    </span>
+                                                )}
                                                 <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', transition: 'transform 0.2s', transform: feishuOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
-                                        </div>
+                                            </div>
                                         </div>
                                         {feishuOpen && (<div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border-subtle)' }}>
 
-                                        {!canManage ? (
-                                            <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', fontStyle: 'italic', padding: '12px', background: 'var(--bg-secondary)', borderRadius: '6px' }}>
-                                                Only the creator or admin can configure communication channels.
-                                            </div>
-                                        ) : channelConfig && !feishuEditing ? (
-                                            <div>
-                                                <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '8px' }}>Mode: <strong>{channelConfig.extra_config?.connection_mode === 'websocket' ? 'Long Connection (WebSocket)' : 'Webhook'}</strong></div>
-                                                <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '8px' }}>App ID: <code>{channelConfig.app_id}</code></div>
-                                                {channelConfig.extra_config?.connection_mode !== 'websocket' && (
-                                                    <div style={{ background: 'var(--bg-secondary)', borderRadius: '6px', padding: '10px', fontSize: '12px', fontFamily: 'var(--font-mono)', marginBottom: '12px' }}>
-                                                        <div style={{ color: 'var(--text-tertiary)', marginBottom: '6px' }}>Webhook URL</div>
-                                                        <div style={{ lineHeight: 1.6, wordBreak: 'break-all' }}>
-                                                            <span style={{ color: 'var(--accent-primary)' }}>
-                                                                {webhookData?.webhook_url || `${window.location.origin}/api/channel/feishu/${id}/webhook`}
-                                                            </span>
-                                                            <button
-                                                                title="Copy"
-                                                                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginLeft: '6px', padding: '1px 4px', cursor: 'pointer', borderRadius: '3px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-secondary)', verticalAlign: 'middle', lineHeight: 1 }}
-                                                                onClick={(e) => {
-                                                                    const url = webhookData?.webhook_url || `${window.location.origin}/api/channel/feishu/${id}/webhook`;
-                                                                    navigator.clipboard.writeText(url).then(() => {
-                                                                        const btn = e.currentTarget as HTMLButtonElement;
-                                                                        const origHtml = btn.innerHTML;
-                                                                        btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="13 2 5 10 2 7"/></svg>';
-                                                                        btn.style.color = 'rgb(16,185,129)';
-                                                                        setTimeout(() => { btn.innerHTML = origHtml; btn.style.color = ''; }, 1500);
-                                                                    });
-                                                                }}
-                                                            >
-                                                                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                                                                    <rect x="4" y="4" width="9" height="11" rx="1.5" />
-                                                                    <path d="M3 11H2a1 1 0 01-1-1V2a1 1 0 011-1h8a1 1 0 011 1v1" />
-                                                                </svg>
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                                <details style={{ marginBottom: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                                                    <summary style={{ cursor: 'pointer', fontWeight: 500, color: 'var(--text-primary)', userSelect: 'none', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                        <span style={{ fontSize: '10px' }}>▶</span> {t('channelGuide.setupGuide')}
-                                                    </summary>
-                                                    <ol style={{ paddingLeft: '16px', margin: '8px 0', lineHeight: 1.9 }}>
-                                                        <li>{t('channelGuide.feishu.step1')}</li>
-                                                        <li>{t('channelGuide.feishu.step2')}</li>
-                                                        <li>{t('channelGuide.feishu.step3')}</li>
-                                                        <li>{t('channelGuide.feishu.step4')}</li>
-                                                        <li>{t('channelGuide.feishu.step5')}</li>
-                                                        <li>{t('channelGuide.feishu.step6')}</li>
-                                                        <li>{t('channelGuide.feishu.step7')}</li>
-                                                        <li>{t('channelGuide.feishu.step8')}</li>
-                                                    </ol>
-                                                    <div style={{ margin: '8px 0', borderRadius: '6px', border: '1px solid var(--border-color)', overflow: 'hidden' }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 10px', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)' }}>
-                                                            <span style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 500 }}>{t('channelGuide.feishuPermJson')}</span>
-                                                            <button type="button" style={{ fontSize: '10px', padding: '1px 7px', cursor: 'pointer', borderRadius: '3px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-secondary)' }} onClick={(e) => { const btn = e.currentTarget as HTMLButtonElement; const json = '{"scopes":{"tenant":["contact:contact.base:readonly","contact:user.base:readonly","contact:user.id:readonly","im:chat","im:message","im:message.group_at_msg:readonly","im:message.p2p_msg:readonly","im:message:send_as_bot","im:resource"],"user":[]}}'; navigator.clipboard.writeText(json).then(() => { const o = btn.textContent; btn.textContent = t('channelGuide.feishuPermCopied'); btn.style.color = 'rgb(16,185,129)'; setTimeout(() => { btn.textContent = o; btn.style.color = ''; }, 1500); }); }}>{t('channelGuide.feishuPermCopy')}</button>
-                                                        </div>
-                                                        <pre style={{ margin: 0, padding: '6px 10px', fontSize: '10px', fontFamily: 'var(--font-mono)', lineHeight: 1.5, background: 'var(--bg-primary)', color: 'var(--text-secondary)', overflowX: 'auto', userSelect: 'all' }}>{`{
-  "scopes": {
-    "tenant": [
-      "contact:contact.base:readonly",
-      "contact:user.base:readonly",
-      "contact:user.id:readonly",
-      "im:chat",
-      "im:message",
-      "im:message.group_at_msg:readonly",
-      "im:message.p2p_msg:readonly",
-      "im:message:send_as_bot",
-      "im:resource"
-    ],
-    "user": []
-  }
-}`}</pre>
-                                                    </div>
-                                                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', background: 'var(--bg-secondary)', padding: '6px 10px', borderRadius: '6px' }}>💡 {t('channelGuide.feishu.note')}</div>
-                                                </details>
-                                                <div style={{ display: 'flex', gap: '8px' }}>
-                                                    <button className="btn btn-secondary" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => { setChannelForm({ app_id: channelConfig.app_id || '', app_secret: channelConfig.app_secret || '', encrypt_key: channelConfig.encrypt_key || '', connection_mode: channelConfig.extra_config?.connection_mode || 'webhook' }); setFeishuEditing(true); }}>Edit</button>
-                                                    <button className="btn btn-danger" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={async () => { await channelApi.delete(id!); queryClient.invalidateQueries({ queryKey: ['channel', id] }); }}>Disconnect</button>
+                                            {!canManage ? (
+                                                <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', fontStyle: 'italic', padding: '12px', background: 'var(--bg-secondary)', borderRadius: '6px' }}>
+                                                    Only the creator or admin can configure communication channels.
                                                 </div>
-                                            </div>
-                                        ) : (
-                                            <div>
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
-                                                    <div>
-                                                        <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>App ID *</label>
-                                                        <input className="input" value={channelForm.app_id} onChange={e => setChannelForm({ ...channelForm, app_id: e.target.value })} placeholder="cli_xxxxxxxxxxxxxxxx" style={{ fontSize: '12px' }} />
-                                                    </div>
-                                                    <div>
-                                                        <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>App Secret *</label>
-                                                        <div style={{ position: 'relative' }}>
-                                                            <input className="input" type={showPwds['feishu_secret'] ? 'text' : 'password'} value={channelForm.app_secret} onChange={e => setChannelForm({ ...channelForm, app_secret: e.target.value })} style={{ fontSize: '12px', paddingRight: '36px', width: '100%' }} />
-                                                            <button type="button" onClick={() => togglePwd('feishu_secret')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '2px', display: 'flex', alignItems: 'center' }}>{showPwds['feishu_secret'] ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>}</button>
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '8px' }}>Connection Mode</label>
-                                                        <div style={{ display: 'flex', gap: '16px', marginBottom: '8px' }}>
-                                                            <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                                                                <input type="radio" name="connection_mode" value="webhook" checked={channelForm.connection_mode === 'webhook'} onChange={() => setChannelForm({ ...channelForm, connection_mode: 'webhook' })} />
-                                                                Webhook (Event Subscription)
-                                                            </label>
-                                                            <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                                                                <input type="radio" name="connection_mode" value="websocket" checked={channelForm.connection_mode === 'websocket'} onChange={() => setChannelForm({ ...channelForm, connection_mode: 'websocket' })} />
-                                                                Long Connection (WebSocket)
-                                                            </label>
-                                                        </div>
-                                                    </div>
-                                                    {channelForm.connection_mode === 'webhook' && (
-                                                        <div>
-                                                            <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Encrypt Key</label>
-                                                            <div style={{ position: 'relative' }}>
-                                                                <input className="input" type={showPwds['feishu_encrypt'] ? 'text' : 'password'} value={channelForm.encrypt_key} onChange={e => setChannelForm({ ...channelForm, encrypt_key: e.target.value })} style={{ fontSize: '12px', paddingRight: '36px', width: '100%' }} />
-                                                                <button type="button" onClick={() => togglePwd('feishu_encrypt')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '2px', display: 'flex', alignItems: 'center' }}>{showPwds['feishu_encrypt'] ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>}</button>
+                                            ) : channelConfig && !feishuEditing ? (
+                                                <div>
+                                                    <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '8px' }}>Mode: <strong>{channelConfig.extra_config?.connection_mode === 'websocket' ? 'Long Connection (WebSocket)' : 'Webhook'}</strong></div>
+                                                    <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '8px' }}>App ID: <code>{channelConfig.app_id}</code></div>
+                                                    {channelConfig.extra_config?.connection_mode !== 'websocket' && (
+                                                        <div style={{ background: 'var(--bg-secondary)', borderRadius: '6px', padding: '10px', fontSize: '12px', fontFamily: 'var(--font-mono)', marginBottom: '12px' }}>
+                                                            <div style={{ color: 'var(--text-tertiary)', marginBottom: '6px' }}>Webhook URL</div>
+                                                            <div style={{ lineHeight: 1.6, wordBreak: 'break-all' }}>
+                                                                <span style={{ color: 'var(--accent-primary)' }}>
+                                                                    {webhookData?.webhook_url || `${window.location.origin}/api/channel/feishu/${id}/webhook`}
+                                                                </span>
+                                                                <button
+                                                                    title="Copy"
+                                                                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginLeft: '6px', padding: '1px 4px', cursor: 'pointer', borderRadius: '3px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-secondary)', verticalAlign: 'middle', lineHeight: 1 }}
+                                                                    onClick={(e) => {
+                                                                        const url = webhookData?.webhook_url || `${window.location.origin}/api/channel/feishu/${id}/webhook`;
+                                                                        navigator.clipboard.writeText(url).then(() => {
+                                                                            const btn = e.currentTarget as HTMLButtonElement;
+                                                                            const origHtml = btn.innerHTML;
+                                                                            btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="13 2 5 10 2 7"/></svg>';
+                                                                            btn.style.color = 'rgb(16,185,129)';
+                                                                            setTimeout(() => { btn.innerHTML = origHtml; btn.style.color = ''; }, 1500);
+                                                                        });
+                                                                    }}
+                                                                >
+                                                                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                                                        <rect x="4" y="4" width="9" height="11" rx="1.5" />
+                                                                        <path d="M3 11H2a1 1 0 01-1-1V2a1 1 0 011-1h8a1 1 0 011 1v1" />
+                                                                    </svg>
+                                                                </button>
                                                             </div>
                                                         </div>
                                                     )}
-                                                </div>
-                                                <details style={{ marginBottom: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                                                    <summary style={{ cursor: 'pointer', fontWeight: 500, color: 'var(--text-primary)', userSelect: 'none', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                        <span style={{ fontSize: '10px' }}>▶</span> {t('channelGuide.setupGuide')}
-                                                    </summary>
-                                                    <ol style={{ paddingLeft: '16px', margin: '8px 0', lineHeight: 1.9 }}>
-                                                        <li>{t('channelGuide.feishu.step1')}</li>
-                                                        <li>{t('channelGuide.feishu.step2')}</li>
-                                                        <li>{t('channelGuide.feishu.step3')}</li>
-                                                        <li>{t('channelGuide.feishu.step4')}</li>
-                                                        <li>{t('channelGuide.feishu.step5')}</li>
-                                                        <li>{t('channelGuide.feishu.step6')}</li>
-                                                        <li>{t('channelGuide.feishu.step7')}</li>
-                                                        <li>{t('channelGuide.feishu.step8')}</li>
-                                                    </ol>
-                                                    <div style={{ margin: '8px 0', borderRadius: '6px', border: '1px solid var(--border-color)', overflow: 'hidden' }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 10px', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)' }}>
-                                                            <span style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 500 }}>{t('channelGuide.feishuPermJson')}</span>
-                                                            <button type="button" style={{ fontSize: '10px', padding: '1px 7px', cursor: 'pointer', borderRadius: '3px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-secondary)' }} onClick={(e) => { const btn = e.currentTarget as HTMLButtonElement; const json = '{"scopes":{"tenant":["contact:contact.base:readonly","contact:user.base:readonly","contact:user.id:readonly","im:chat","im:message","im:message.group_at_msg:readonly","im:message.p2p_msg:readonly","im:message:send_as_bot","im:resource"],"user":[]}}'; navigator.clipboard.writeText(json).then(() => { const o = btn.textContent; btn.textContent = t('channelGuide.feishuPermCopied'); btn.style.color = 'rgb(16,185,129)'; setTimeout(() => { btn.textContent = o; btn.style.color = ''; }, 1500); }); }}>{t('channelGuide.feishuPermCopy')}</button>
-                                                        </div>
-                                                        <pre style={{ margin: 0, padding: '6px 10px', fontSize: '10px', fontFamily: 'var(--font-mono)', lineHeight: 1.5, background: 'var(--bg-primary)', color: 'var(--text-secondary)', overflowX: 'auto', userSelect: 'all' }}>{`{
+                                                    <details style={{ marginBottom: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                                        <summary style={{ cursor: 'pointer', fontWeight: 500, color: 'var(--text-primary)', userSelect: 'none', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                            <span style={{ fontSize: '10px' }}>▶</span> {t('channelGuide.setupGuide')}
+                                                        </summary>
+                                                        <ol style={{ paddingLeft: '16px', margin: '8px 0', lineHeight: 1.9 }}>
+                                                            <li>{t('channelGuide.feishu.step1')}</li>
+                                                            <li>{t('channelGuide.feishu.step2')}</li>
+                                                            <li>{t('channelGuide.feishu.step3')}</li>
+                                                            <li>{t('channelGuide.feishu.step4')}</li>
+                                                            <li>{t('channelGuide.feishu.step5')}</li>
+                                                            <li>{t('channelGuide.feishu.step6')}</li>
+                                                            <li>{t('channelGuide.feishu.step7')}</li>
+                                                            <li>{t('channelGuide.feishu.step8')}</li>
+                                                        </ol>
+                                                        <div style={{ margin: '8px 0', borderRadius: '6px', border: '1px solid var(--border-color)', overflow: 'hidden' }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 10px', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)' }}>
+                                                                <span style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 500 }}>{t('channelGuide.feishuPermJson')}</span>
+                                                                <button type="button" style={{ fontSize: '10px', padding: '1px 7px', cursor: 'pointer', borderRadius: '3px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-secondary)' }} onClick={(e) => { const btn = e.currentTarget as HTMLButtonElement; const json = '{"scopes":{"tenant":["contact:contact.base:readonly","contact:user.base:readonly","contact:user.id:readonly","im:chat","im:message","im:message.group_at_msg:readonly","im:message.p2p_msg:readonly","im:message:send_as_bot","im:resource"],"user":[]}}'; navigator.clipboard.writeText(json).then(() => { const o = btn.textContent; btn.textContent = t('channelGuide.feishuPermCopied'); btn.style.color = 'rgb(16,185,129)'; setTimeout(() => { btn.textContent = o; btn.style.color = ''; }, 1500); }); }}>{t('channelGuide.feishuPermCopy')}</button>
+                                                            </div>
+                                                            <pre style={{ margin: 0, padding: '6px 10px', fontSize: '10px', fontFamily: 'var(--font-mono)', lineHeight: 1.5, background: 'var(--bg-primary)', color: 'var(--text-secondary)', overflowX: 'auto', userSelect: 'all' }}>{`{
   "scopes": {
     "tenant": [
       "contact:contact.base:readonly",
@@ -4111,91 +4032,182 @@ function AgentDetailInner() {
     "user": []
   }
 }`}</pre>
+                                                        </div>
+                                                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', background: 'var(--bg-secondary)', padding: '6px 10px', borderRadius: '6px' }}>💡 {t('channelGuide.feishu.note')}</div>
+                                                    </details>
+                                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                                        <button className="btn btn-secondary" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => { setChannelForm({ app_id: channelConfig.app_id || '', app_secret: channelConfig.app_secret || '', encrypt_key: channelConfig.encrypt_key || '', connection_mode: channelConfig.extra_config?.connection_mode || 'webhook' }); setFeishuEditing(true); }}>Edit</button>
+                                                        <button className="btn btn-danger" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={async () => { await channelApi.delete(id!); queryClient.invalidateQueries({ queryKey: ['channel', id] }); }}>Disconnect</button>
                                                     </div>
-                                                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', background: 'var(--bg-secondary)', padding: '6px 10px', borderRadius: '6px' }}>💡 {t('channelGuide.feishu.note')}</div>
-                                                </details>
-                                                <div style={{ display: 'flex', gap: '8px' }}>
-                                                    <button className="btn btn-primary" style={{ fontSize: '12px' }} onClick={() => { saveChannel.mutate(); setFeishuEditing(false); }} disabled={!channelForm.app_id || !channelForm.app_secret || saveChannel.isPending}>
-                                                        {saveChannel.isPending ? t('common.loading') : (feishuEditing ? 'Save Changes' : t('agent.settings.channel.saveChannel'))}
-                                                    </button>
-                                                    {feishuEditing && <button className="btn btn-secondary" style={{ fontSize: '12px' }} onClick={() => setFeishuEditing(false)}>Cancel</button>}
                                                 </div>
-                                            </div>
-                                        )}
+                                            ) : (
+                                                <div>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+                                                        <div>
+                                                            <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>App ID *</label>
+                                                            <input className="input" value={channelForm.app_id} onChange={e => setChannelForm({ ...channelForm, app_id: e.target.value })} placeholder="cli_xxxxxxxxxxxxxxxx" style={{ fontSize: '12px' }} />
+                                                        </div>
+                                                        <div>
+                                                            <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>App Secret *</label>
+                                                            <div style={{ position: 'relative' }}>
+                                                                <input className="input" type={showPwds['feishu_secret'] ? 'text' : 'password'} value={channelForm.app_secret} onChange={e => setChannelForm({ ...channelForm, app_secret: e.target.value })} style={{ fontSize: '12px', paddingRight: '36px', width: '100%' }} />
+                                                                <button type="button" onClick={() => togglePwd('feishu_secret')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '2px', display: 'flex', alignItems: 'center' }}>{showPwds['feishu_secret'] ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>}</button>
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '8px' }}>Connection Mode</label>
+                                                            <div style={{ display: 'flex', gap: '16px', marginBottom: '8px' }}>
+                                                                <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                                                                    <input type="radio" name="connection_mode" value="webhook" checked={channelForm.connection_mode === 'webhook'} onChange={() => setChannelForm({ ...channelForm, connection_mode: 'webhook' })} />
+                                                                    Webhook (Event Subscription)
+                                                                </label>
+                                                                <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                                                                    <input type="radio" name="connection_mode" value="websocket" checked={channelForm.connection_mode === 'websocket'} onChange={() => setChannelForm({ ...channelForm, connection_mode: 'websocket' })} />
+                                                                    Long Connection (WebSocket)
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                        {channelForm.connection_mode === 'webhook' && (
+                                                            <div>
+                                                                <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Encrypt Key</label>
+                                                                <div style={{ position: 'relative' }}>
+                                                                    <input className="input" type={showPwds['feishu_encrypt'] ? 'text' : 'password'} value={channelForm.encrypt_key} onChange={e => setChannelForm({ ...channelForm, encrypt_key: e.target.value })} style={{ fontSize: '12px', paddingRight: '36px', width: '100%' }} />
+                                                                    <button type="button" onClick={() => togglePwd('feishu_encrypt')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '2px', display: 'flex', alignItems: 'center' }}>{showPwds['feishu_encrypt'] ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>}</button>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <details style={{ marginBottom: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                                        <summary style={{ cursor: 'pointer', fontWeight: 500, color: 'var(--text-primary)', userSelect: 'none', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                            <span style={{ fontSize: '10px' }}>▶</span> {t('channelGuide.setupGuide')}
+                                                        </summary>
+                                                        <ol style={{ paddingLeft: '16px', margin: '8px 0', lineHeight: 1.9 }}>
+                                                            <li>{t('channelGuide.feishu.step1')}</li>
+                                                            <li>{t('channelGuide.feishu.step2')}</li>
+                                                            <li>{t('channelGuide.feishu.step3')}</li>
+                                                            <li>{t('channelGuide.feishu.step4')}</li>
+                                                            <li>{t('channelGuide.feishu.step5')}</li>
+                                                            <li>{t('channelGuide.feishu.step6')}</li>
+                                                            <li>{t('channelGuide.feishu.step7')}</li>
+                                                            <li>{t('channelGuide.feishu.step8')}</li>
+                                                        </ol>
+                                                        <div style={{ margin: '8px 0', borderRadius: '6px', border: '1px solid var(--border-color)', overflow: 'hidden' }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 10px', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)' }}>
+                                                                <span style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 500 }}>{t('channelGuide.feishuPermJson')}</span>
+                                                                <button type="button" style={{ fontSize: '10px', padding: '1px 7px', cursor: 'pointer', borderRadius: '3px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-secondary)' }} onClick={(e) => { const btn = e.currentTarget as HTMLButtonElement; const json = '{"scopes":{"tenant":["contact:contact.base:readonly","contact:user.base:readonly","contact:user.id:readonly","im:chat","im:message","im:message.group_at_msg:readonly","im:message.p2p_msg:readonly","im:message:send_as_bot","im:resource"],"user":[]}}'; navigator.clipboard.writeText(json).then(() => { const o = btn.textContent; btn.textContent = t('channelGuide.feishuPermCopied'); btn.style.color = 'rgb(16,185,129)'; setTimeout(() => { btn.textContent = o; btn.style.color = ''; }, 1500); }); }}>{t('channelGuide.feishuPermCopy')}</button>
+                                                            </div>
+                                                            <pre style={{ margin: 0, padding: '6px 10px', fontSize: '10px', fontFamily: 'var(--font-mono)', lineHeight: 1.5, background: 'var(--bg-primary)', color: 'var(--text-secondary)', overflowX: 'auto', userSelect: 'all' }}>{`{
+  "scopes": {
+    "tenant": [
+      "contact:contact.base:readonly",
+      "contact:user.base:readonly",
+      "contact:user.id:readonly",
+      "im:chat",
+      "im:message",
+      "im:message.group_at_msg:readonly",
+      "im:message.p2p_msg:readonly",
+      "im:message:send_as_bot",
+      "im:resource"
+    ],
+    "user": []
+  }
+}`}</pre>
+                                                        </div>
+                                                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', background: 'var(--bg-secondary)', padding: '6px 10px', borderRadius: '6px' }}>💡 {t('channelGuide.feishu.note')}</div>
+                                                    </details>
+                                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                                        <button className="btn btn-primary" style={{ fontSize: '12px' }} onClick={() => { saveChannel.mutate(); setFeishuEditing(false); }} disabled={!channelForm.app_id || !channelForm.app_secret || saveChannel.isPending}>
+                                                            {saveChannel.isPending ? t('common.loading') : (feishuEditing ? 'Save Changes' : t('agent.settings.channel.saveChannel'))}
+                                                        </button>
+                                                        {feishuEditing && <button className="btn btn-secondary" style={{ fontSize: '12px' }} onClick={() => setFeishuEditing(false)}>Cancel</button>}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>)}
                                     </div>
-				    {/* Atlassian */}
-                                    <div style={{ border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '16px', marginBottom: '12px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+
+                                    {/* Atlassian */}
+                                    <div style={{ border: '1px solid var(--border-subtle)', borderRadius: '8px', marginBottom: '12px', overflow: 'hidden' }}>
+                                        <div onClick={() => setAtlassianOpen(!atlassianOpen)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', cursor: 'pointer', transition: 'background 0.15s' }} onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                    <path d="M11.53 1.1a.59.59 0 00-.96.06L5.81 9.08a.59.59 0 00.52.87h3.89l-2.7 4.73a.59.59 0 00.52.87h7.42a.59.59 0 00.52-.87l-5.24-9.17 1.09-1.91a.59.59 0 000-.59L11.53 1.1z" fill="#0052CC"/>
-                                                    <path d="M12.47 22.9a.59.59 0 00.96-.06l4.76-7.92a.59.59 0 00-.52-.87h-3.89l2.7-4.73a.59.59 0 00-.52-.87H8.54a.59.59 0 00-.52.87l5.24 9.17-1.09 1.91a.59.59 0 000 .59l.3.51z" fill="#2684FF"/>
+                                                    <path d="M11.53 1.1a.59.59 0 00-.96.06L5.81 9.08a.59.59 0 00.52.87h3.89l-2.7 4.73a.59.59 0 00.52.87h7.42a.59.59 0 00.52-.87l-5.24-9.17 1.09-1.91a.59.59 0 000-.59L11.53 1.1z" fill="#0052CC" />
+                                                    <path d="M12.47 22.9a.59.59 0 00.96-.06l4.76-7.92a.59.59 0 00-.52-.87h-3.89l2.7-4.73a.59.59 0 00-.52-.87H8.54a.59.59 0 00-.52.87l5.24 9.17-1.09 1.91a.59.59 0 000 .59l.3.51z" fill="#2684FF" />
                                                 </svg>
                                                 <div>
                                                     <div style={{ fontWeight: 600, fontSize: '14px' }}>Atlassian</div>
                                                     <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>Jira · Confluence · Compass (Rovo MCP)</div>
                                                 </div>
                                             </div>
-                                            {atlassianConfig && <span className={`badge ${atlassianConfig.is_configured ? 'badge-success' : 'badge-warning'}`}>{atlassianConfig.is_configured ? t('agent.settings.channel.configured') : t('agent.settings.channel.notConfigured')}</span>}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                {atlassianConfig && <span className={`badge ${atlassianConfig.is_configured ? 'badge-success' : 'badge-warning'}`} style={{ fontSize: '10px' }}>{atlassianConfig.is_configured ? t('agent.settings.channel.configured') : t('agent.settings.channel.notConfigured')}</span>}
+                                                <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', transition: 'transform 0.2s', transform: atlassianOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+                                            </div>
                                         </div>
-                                        {!canManage ? (
-                                            <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', fontStyle: 'italic', padding: '12px', background: 'var(--bg-secondary)', borderRadius: '6px' }}>
-                                                Only the creator or admin can configure integrations.
-                                            </div>
-                                        ) : atlassianConfig?.is_configured && !atlassianEditing ? (
-                                            <div>
-                                                <div style={{ background: 'var(--bg-secondary)', borderRadius: '6px', padding: '10px', fontSize: '12px', marginBottom: '12px' }}>
-                                                    <div style={{ color: 'var(--text-tertiary)', marginBottom: '4px' }}>Status</div>
-                                                    <div style={{ color: 'var(--text-primary)', fontWeight: 500 }}>✅ API Key configured — Jira / Confluence / Compass tools available</div>
-                                                    {atlassianConfig.cloud_id && <div style={{ color: 'var(--text-tertiary)', marginTop: '4px', fontSize: '11px' }}>Cloud ID: <code>{atlassianConfig.cloud_id}</code></div>}
-                                                </div>
-                                                {atlassianTestResult && (
-                                                    <div style={{ padding: '8px 12px', borderRadius: '6px', fontSize: '12px', marginBottom: '10px', background: atlassianTestResult.ok ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${atlassianTestResult.ok ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)'}`, color: atlassianTestResult.ok ? 'rgb(5,150,105)' : 'rgb(220,38,38)' }}>
-                                                        {atlassianTestResult.ok
-                                                            ? `✅ ${atlassianTestResult.message || `Connected — ${atlassianTestResult.tool_count} tools available`}`
-                                                            : `❌ ${atlassianTestResult.error}`}
-                                                    </div>
-                                                )}
-                                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                                    <button className="btn btn-secondary" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={testAtlassian} disabled={atlassianTesting}>
-                                                        {atlassianTesting ? 'Testing...' : '🔌 Test Connection'}
-                                                    </button>
-                                                    <button className="btn btn-secondary" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => { setAtlassianForm({ api_key: '', cloud_id: atlassianConfig?.cloud_id || '' }); setAtlassianEditing(true); }}>Edit</button>
-                                                    <button className="btn btn-danger" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => deleteAtlassian.mutate()}>Disconnect</button>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                                <div style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(0,82,204,0.06)', border: '1px solid rgba(0,82,204,0.2)', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
-                                                    💡 Connect your Atlassian account to give this agent access to Jira, Confluence, and Compass via the Rovo MCP server.
-                                                    Get your API key at <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" rel="noreferrer" style={{ color: 'var(--accent-primary)' }}>id.atlassian.com → Security → API tokens</a>
-                                                </div>
-                                                <div>
-                                                    <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>API Key *</label>
-                                                    <div style={{ position: 'relative' }}>
-                                                        <input className="input" type={showPwds['atl_key'] ? 'text' : 'password'} value={atlassianForm.api_key} onChange={e => setAtlassianForm({ ...atlassianForm, api_key: e.target.value })} placeholder="ATSTT3x... (service account) or Basic base64(email:token)" style={{ fontSize: '12px', paddingRight: '36px', width: '100%' }} />
-                                                        <button type="button" onClick={() => togglePwd('atl_key')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '2px', display: 'flex', alignItems: 'center' }}>{showPwds['atl_key'] ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>}</button>
-                                                    </div>
-                                                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>
-                                                        Service account key starts with <code>ATSTT</code>. Personal API token: base64-encode <code>email:token</code> and prefix with <code>Basic </code>
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Cloud ID <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(optional)</span></label>
-                                                    <input className="input" value={atlassianForm.cloud_id} onChange={e => setAtlassianForm({ ...atlassianForm, cloud_id: e.target.value })} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" style={{ fontSize: '12px' }} />
-                                                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>Required for multi-site setups. Find it at <code>your-site.atlassian.net/_edge/tenant_info</code></div>
-                                                </div>
-                                                <div style={{ display: 'flex', gap: '8px' }}>
-                                                    <button className="btn btn-primary" style={{ fontSize: '12px', alignSelf: 'flex-start' }} onClick={() => saveAtlassian.mutate()} disabled={!atlassianForm.api_key || saveAtlassian.isPending}>
-                                                        {saveAtlassian.isPending ? 'Connecting...' : (atlassianEditing ? 'Save Changes' : 'Connect Atlassian')}
-                                                    </button>
-                                                    {atlassianEditing && <button className="btn btn-secondary" style={{ fontSize: '12px' }} onClick={() => { setAtlassianEditing(false); setAtlassianForm({ api_key: '', cloud_id: '' }); }}>Cancel</button>}
+
+                                        {atlassianOpen && (
+                                            <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border-subtle)' }}>
+                                                <div style={{ paddingTop: '16px' }}>
+                                                    {!canManage ? (
+                                                        <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', fontStyle: 'italic', padding: '12px', background: 'var(--bg-secondary)', borderRadius: '6px' }}>
+                                                            Only the creator or admin can configure integrations.
+                                                        </div>
+                                                    ) : atlassianConfig?.is_configured && !atlassianEditing ? (
+                                                        <div>
+                                                            <div style={{ background: 'var(--bg-secondary)', borderRadius: '6px', padding: '10px', fontSize: '12px', marginBottom: '12px' }}>
+                                                                <div style={{ color: 'var(--text-tertiary)', marginBottom: '4px' }}>Status</div>
+                                                                <div style={{ color: 'var(--text-primary)', fontWeight: 500 }}>✅ API Key configured — Jira / Confluence / Compass tools available</div>
+                                                                {atlassianConfig.cloud_id && <div style={{ color: 'var(--text-tertiary)', marginTop: '4px', fontSize: '11px' }}>Cloud ID: <code>{atlassianConfig.cloud_id}</code></div>}
+                                                            </div>
+                                                            {atlassianTestResult && (
+                                                                <div style={{ padding: '8px 12px', borderRadius: '6px', fontSize: '12px', marginBottom: '10px', background: atlassianTestResult.ok ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${atlassianTestResult.ok ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)'}`, color: atlassianTestResult.ok ? 'rgb(5,150,105)' : 'rgb(220,38,38)' }}>
+                                                                    {atlassianTestResult.ok
+                                                                        ? `✅ ${atlassianTestResult.message || `Connected — ${atlassianTestResult.tool_count} tools available`}`
+                                                                        : `❌ ${atlassianTestResult.error}`}
+                                                                </div>
+                                                            )}
+                                                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                                                <button className="btn btn-secondary" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={testAtlassian} disabled={atlassianTesting}>
+                                                                    {atlassianTesting ? 'Testing...' : '🔌 Test Connection'}
+                                                                </button>
+                                                                <button className="btn btn-secondary" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => { setAtlassianForm({ api_key: '', cloud_id: atlassianConfig?.cloud_id || '' }); setAtlassianEditing(true); }}>Edit</button>
+                                                                <button className="btn btn-danger" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => deleteAtlassian.mutate()}>Disconnect</button>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                                            <div style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(0,82,204,0.06)', border: '1px solid rgba(0,82,204,0.2)', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
+                                                                💡 Connect your Atlassian account to give this agent access to Jira, Confluence, and Compass via the Rovo MCP server.
+                                                                Get your API key at <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" rel="noreferrer" style={{ color: 'var(--accent-primary)' }}>id.atlassian.com → Security → API tokens</a>
+                                                            </div>
+                                                            <div>
+                                                                <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>API Key *</label>
+                                                                <div style={{ position: 'relative' }}>
+                                                                    <input className="input" type={showPwds['atl_key'] ? 'text' : 'password'} value={atlassianForm.api_key} onChange={e => setAtlassianForm({ ...atlassianForm, api_key: e.target.value })} placeholder="ATSTT3x... (service account) or Basic base64(email:token)" style={{ fontSize: '12px', paddingRight: '36px', width: '100%' }} />
+                                                                    <button type="button" onClick={() => togglePwd('atl_key')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '2px', display: 'flex', alignItems: 'center' }}>{showPwds['atl_key'] ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>}</button>
+                                                                </div>
+                                                                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>
+                                                                    Service account key starts with <code>ATSTT</code>. Personal API token: base64-encode <code>email:token</code> and prefix with <code>Basic </code>
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Cloud ID <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(optional)</span></label>
+                                                                <input className="input" value={atlassianForm.cloud_id} onChange={e => setAtlassianForm({ ...atlassianForm, cloud_id: e.target.value })} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" style={{ fontSize: '12px' }} />
+                                                                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>Required for multi-site setups. Find it at <code>your-site.atlassian.net/_edge/tenant_info</code></div>
+                                                            </div>
+                                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                                                <button className="btn btn-primary" style={{ fontSize: '12px', alignSelf: 'flex-start' }} onClick={() => saveAtlassian.mutate()} disabled={!atlassianForm.api_key || saveAtlassian.isPending}>
+                                                                    {saveAtlassian.isPending ? 'Connecting...' : (atlassianEditing ? 'Save Changes' : 'Connect Atlassian')}
+                                                                </button>
+                                                                {atlassianEditing && <button className="btn btn-secondary" style={{ fontSize: '12px' }} onClick={() => { setAtlassianEditing(false); setAtlassianForm({ api_key: '', cloud_id: '' }); }}>Cancel</button>}
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         )}
                                     </div>
-				    {/* Microsoft Teams */}
+                                    {/* Microsoft Teams */}
                                     <div style={{ border: '1px solid var(--border-subtle)', borderRadius: '8px', overflow: 'hidden', marginBottom: '12px' }}>
                                         <div onClick={() => setTeamsOpen(!teamsOpen)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', cursor: 'pointer', transition: 'background 0.15s' }} onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
