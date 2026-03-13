@@ -70,24 +70,46 @@ Available only to `platform_admin` and `org_admin`. Contains:
 - **Quotas & Users**: View/Edit usage limits per user inline.
 - **Org Structure**: Feishu contact sync for organizational hierarchy.
 
-### 4.4 Agent Lifecycle & UI Pages
-**Creation Wizard (5 steps)**: 1. Basis & Model -> 2. Personality & Boundaries -> 3. Skills -> 4. Permissions -> 5. Feishu Bot matching.
+### 4.3 Agent Lifecycle & UI Pages
+**Creation Wizard (5 steps)**: 1. Basis & Model -> 2. Personality & Boundaries -> 3. Skills -> 4. Permissions -> 5. Channel Config (Feishu/Discord/Slack/Teams).
 
 **Agent Detail Overview**:
 - **Status**: Run state, role description (inline editable), expiration TTL.
 - **Pulse**: Agenda, Active Triggers, Monologue, History.
 - **Mind**: Soul definition and Memories.
-- **Tools**: Toggle base tools (Search, Feishu, File I/O, Sandbox Execution, Jina Document Reading/Search).
+- **Tools**: Toggle base tools (Search, Feishu, File I/O, Sandbox Execution, Jina Document Reading/Search, Email). Per-tool configuration via `config_schema` with field-level `depends_on` conditional display. Agent-installed tools can be deleted by the creator.
 - **Skills**: Skill file management.
 - **Workspace**: File browser with upload, delete, and visual preview support.
 - **Chat**: Web interface for chatting, supporting image/file uploads and clipboard paste. Persistent URLs for image previews.
 - **Activity Log**: System logs of the agent's actions.
-- **Settings**: Primary/Fallback models, Tool call limits, Autonomy boundaries (L1/L2/L3), Feishu channel bridging.
+- **Settings**: Primary/Fallback models, Tool call limits, Autonomy boundaries (L1/L2/L3), multi-channel bridging (Feishu, Discord, Slack, Microsoft Teams).
+
+### 4.4 Sidebar Navigation
+- **Agent Search**: When the user has 5+ agents, a compact search input appears at the top of the sidebar agent list. Filters by agent name and role description.
+- **Pin to Top**: Each agent item reveals a pin button on hover. Pinned agents are sorted to the top of their section (My Created / Company Shared). Pin state is persisted via `localStorage`.
 
 ### 4.5 Tooling Ecosystem
 - **Jina AI Integrations**: `jina_search` (web search) and `jina_read` (webpage to markdown extraction).
 - **Code Execution**: A secure sandbox backend to run Python/Bash/Node.js.
 - **Document Processing**: Unified backend parsing for PDF, DOCX, XLSX, TXT.
+- **Email Tools (IMAP/SMTP)**: `send_email`, `read_emails`, `reply_email` — universal email send/receive tools. Supports 6 provider presets (QQ, 163, Gmail, Outlook, Tencent Enterprise, Aliyun Enterprise) with auto-filled server details. Per-agent credential storage in `AgentTool.config`. Frontend includes test-connection button and inline authorization code help text.
+- **MCP OAuth Recovery**: Expired Smithery Connect OAuth tokens are automatically re-created. Agents can re-authorize MCP tools when permissions expire.
+
+### 4.6 Notification & Approval System
+- **Unified Notifications**: Backend notification model with real-time unread count polling. Notification panel slides out from the sidebar. Supports notifications from approvals, Plaza mentions, and system events.
+- **Creator-Level Approvals**: When an agent action (e.g., L3 tool call) requires approval, the request is sent to the agent's creator. Approved actions are automatically executed. Admins can view all pending approvals.
+
+### 4.7 Token & Usage Tracking
+- **Per-Round Accumulation**: Token usage is tracked per LLM call round with real data from the API response, not estimates.
+- **Lazy Reset**: Daily and monthly counters reset lazily on first use after the period boundary (`last_daily_reset`, `last_monthly_reset`).
+- **Formatted Display**: Large token numbers are displayed with K/M suffixes in the UI.
+
+### 4.8 Channel Integrations
+Agents can be reached through multiple external channels, each with a step-by-step setup guide in the UI:
+- **Feishu (Lark)**: Webhook events + bot messaging.
+- **Discord**: Slash commands via Interactions Endpoint URL.
+- **Slack**: Event Subscriptions + Bot Token OAuth.
+- **Microsoft Teams**: Azure Bot Framework with single-tenant App Registration.
 
 ---
 
@@ -111,4 +133,8 @@ When modifying the Clawith application as an AI Developer:
 
 | Date | Changes |
 |------|---------|
-| 2026-03-09 | Initial creation of this comprehensive Architecture & Feature Spec. Replaces the old FEATURES.md. Integrated explanations of the Pulse Engine, Triggers, Notification Bar, and MCP philosophy. |
+| 2026-03-13 | Added IMAP/SMTP email tools (send, read, reply) with 6 provider presets and test-connection. Sidebar search & pin-to-top for agent list. |
+| 2026-03-12 | Unified notification system + creator-level approval flow. Token tracking with per-round accumulation and K/M display. Dashboard agent list scrollable. |
+| 2026-03-11 | MCP OAuth auto-recovery for Smithery Connect. Agent-installed tool delete button. Duplicate MCP tool detection. |
+| 2026-03-10 | Discord, Slack, Microsoft Teams channel integrations with step-by-step setup guides. Feishu tools visibility tied to channel config. |
+| 2026-03-09 | Initial creation of Architecture & Feature Spec. Pulse Engine, Triggers, Notification Bar, and MCP philosophy. |
