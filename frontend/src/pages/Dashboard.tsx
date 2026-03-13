@@ -160,10 +160,12 @@ function StatsBar({ agents, allTasks }: { agents: Agent[]; allTasks: Task[] }) {
 
 /* ────── Agent Row ────── */
 
-function AgentRow({ agent, tasks, recentActivity }: {
+function AgentRow({ agent, tasks, recentActivity, isPinned, onTogglePin }: {
     agent: Agent;
     tasks: Task[];
     recentActivity: any[];
+    isPinned: boolean;
+    onTogglePin: (agentId: string) => void;
 }) {
     const { t } = useTranslation();
     const navigate = useNavigate();
@@ -191,6 +193,22 @@ function AgentRow({ agent, tasks, recentActivity }: {
         >
             {/* Agent Info */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                <button
+                    onClick={e => { e.stopPropagation(); onTogglePin(agent.id); }}
+                    title={isPinned ? 'Unpin' : 'Pin to top'}
+                    style={{
+                        background: 'none', border: 'none', cursor: 'pointer', padding: '2px',
+                        color: isPinned ? 'var(--primary)' : 'var(--text-tertiary)',
+                        opacity: isPinned ? 1 : 0,
+                        transition: 'opacity 120ms, color 120ms',
+                        fontSize: '12px', flexShrink: 0,
+                    }}
+                    className="pin-btn"
+                >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill={isPinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 17v5" /><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16h14v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V5a1 1 0 0 1 1-1h1V2H7v2h1a1 1 0 0 1 1 1z" />
+                    </svg>
+                </button>
                 <div style={{
                     width: '32px', height: '32px', borderRadius: 'var(--radius-md)',
                     background: 'var(--bg-tertiary)', border: '1px solid var(--border-subtle)',
@@ -364,6 +382,23 @@ export default function Dashboard() {
     const [allTasks, setAllTasks] = useState<Task[]>([]);
     const [allActivities, setAllActivities] = useState<any[]>([]);
     const [agentActivities, setAgentActivities] = useState<Record<string, any[]>>({});
+    const [agentSearch, setAgentSearch] = useState('');
+    const [pinnedAgents, setPinnedAgents] = useState<Set<string>>(() => {
+        try {
+            const stored = localStorage.getItem('pinned_agents');
+            return stored ? new Set(JSON.parse(stored)) : new Set();
+        } catch { return new Set(); }
+    });
+
+    const togglePin = (agentId: string) => {
+        setPinnedAgents(prev => {
+            const next = new Set(prev);
+            if (next.has(agentId)) next.delete(agentId);
+            else next.add(agentId);
+            localStorage.setItem('pinned_agents', JSON.stringify([...next]));
+            return next;
+        });
+    };
 
     useEffect(() => {
         if (agents.length === 0) return;
@@ -452,18 +487,49 @@ export default function Dashboard() {
                     <StatsBar agents={agents} allTasks={allTasks} />
 
                     {/* Agent List Header */}
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: '220px 1fr 150px 100px',
-                        padding: '0 16px', marginBottom: '4px',
-                        fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 500,
-                        textTransform: 'uppercase' as const, letterSpacing: '0.05em',
-                    }}>
-                        <span>{t('dashboard.table.agent')}</span>
-                        <span>{t('dashboard.table.latestActivity')}</span>
-                        <span>Token</span>
-                        <span style={{ textAlign: 'right' }}>{t('dashboard.table.active')}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: '220px 1fr 150px 100px',
+                            flex: 1,
+                            padding: '0 16px',
+                            fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 500,
+                            textTransform: 'uppercase' as const, letterSpacing: '0.05em',
+                        }}>
+                            <span>{t('dashboard.table.agent')}</span>
+                            <span>{t('dashboard.table.latestActivity')}</span>
+                            <span>Token</span>
+                            <span style={{ textAlign: 'right' }}>{t('dashboard.table.active')}</span>
+                        </div>
                     </div>
+
+                    {/* Search + Divider */}
+                    {agents.length >= 5 && (
+                        <div style={{ position: 'relative', marginBottom: '8px' }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+                                <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
+                            </svg>
+                            <input
+                                type="text"
+                                value={agentSearch}
+                                onChange={e => setAgentSearch(e.target.value)}
+                                placeholder={t('dashboard.searchAgents', 'Search agents...')}
+                                style={{
+                                    width: '100%', padding: '8px 32px 8px 34px', border: '1px solid var(--border-subtle)',
+                                    borderRadius: '8px', background: 'var(--bg-secondary)', color: 'var(--text-primary)',
+                                    fontSize: '13px', outline: 'none', boxSizing: 'border-box',
+                                }}
+                                onFocus={e => e.target.style.borderColor = 'var(--primary)'}
+                                onBlur={e => e.target.style.borderColor = 'var(--border-subtle)'}
+                            />
+                            {agentSearch && (
+                                <button
+                                    onClick={() => setAgentSearch('')}
+                                    style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: '14px', padding: '2px' }}
+                                >✕</button>
+                            )}
+                        </div>
+                    )}
 
                     {/* Divider */}
                     <div style={{ height: '1px', background: 'var(--border-subtle)', margin: '0 0 4px' }} />
@@ -471,7 +537,16 @@ export default function Dashboard() {
                     {/* Agent Rows */}
                     <div style={{ display: 'flex', flexDirection: 'column', marginBottom: '32px' }}>
                         {agents
+                            .filter(a => {
+                                if (!agentSearch.trim()) return true;
+                                const q = agentSearch.toLowerCase();
+                                return (a.name || '').toLowerCase().includes(q)
+                                    || (a.role_description || '').toLowerCase().includes(q);
+                            })
                             .sort((a, b) => {
+                                const aPinned = pinnedAgents.has(a.id) ? 1 : 0;
+                                const bPinned = pinnedAgents.has(b.id) ? 1 : 0;
+                                if (aPinned !== bPinned) return bPinned - aPinned;
                                 const aActive = a.status === 'running' || a.status === 'idle' ? 1 : 0;
                                 const bActive = b.status === 'running' || b.status === 'idle' ? 1 : 0;
                                 if (aActive !== bActive) return bActive - aActive;
@@ -485,6 +560,8 @@ export default function Dashboard() {
                                     agent={agent}
                                     tasks={tasksByAgent.get(agent.id) || []}
                                     recentActivity={agentActivities[agent.id] || []}
+                                    isPinned={pinnedAgents.has(agent.id)}
+                                    onTogglePin={togglePin}
                                 />
                             ))}
                     </div>
