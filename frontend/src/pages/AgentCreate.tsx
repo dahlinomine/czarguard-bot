@@ -126,70 +126,80 @@ export default function AgentCreate() {
                         <div style={{ fontSize: '32px', marginBottom: '12px' }}>&#x2713;</div>
                         <h3 style={{ fontWeight: 600, marginBottom: '8px' }}>{agent.name}</h3>
                         <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '24px' }}>
-                            {t('openclaw.createdDesc', 'Your OpenClaw agent has been registered. Save the API key below and follow the setup guide.')}
+                            {t('openclaw.createdDesc2', 'Your OpenClaw agent has been registered. Copy the instruction below and send it to your OpenClaw agent to complete the setup.')}
                         </p>
                     </div>
 
-                    {/* API Key */}
+                    {/* Setup Instruction — single block to send to OpenClaw */}
                     <div style={{ marginBottom: '20px' }}>
                         <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>
-                            API Key
-                        </label>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                            <code style={{
-                                flex: 1, padding: '10px 12px', background: 'var(--bg-secondary)', borderRadius: '6px',
-                                fontSize: '13px', fontFamily: 'monospace', wordBreak: 'break-all',
-                                border: '1px solid var(--border-default)',
-                            }}>{createdApiKey}</code>
-                            <button className="btn btn-secondary" onClick={() => navigator.clipboard.writeText(createdApiKey)}>
-                                {t('common.copy', 'Copy')}
-                            </button>
-                        </div>
-                        <p style={{ fontSize: '11px', color: 'var(--warning, #f59e0b)', marginTop: '6px' }}>
-                            {t('openclaw.keyWarning', 'Save this key now. It will not be shown again.')}
-                        </p>
-                    </div>
-
-                    {/* Setup Guide */}
-                    <div style={{ marginBottom: '20px' }}>
-                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>
-                            {t('openclaw.step1Title', 'Step 1: Add Skill file')}
+                            {t('openclaw.setupInstruction', 'Setup Instruction')}
                         </label>
                         <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '8px' }}>
-                            {t('openclaw.step1Desc', 'Save this to your OpenClaw\'s skills/clawith_sync.md')}
+                            {t('openclaw.setupInstructionDesc', 'Copy and send this to your OpenClaw agent. It will configure itself automatically.')}
                         </p>
                         <div style={{ position: 'relative' }}>
                             <pre style={{
                                 padding: '12px', background: 'var(--bg-secondary)', borderRadius: '6px',
-                                fontSize: '11px', lineHeight: 1.6, overflow: 'auto', maxHeight: '200px',
+                                fontSize: '11px', lineHeight: 1.6, overflow: 'auto', maxHeight: '280px',
                                 border: '1px solid var(--border-default)', whiteSpace: 'pre-wrap',
-                            }}>{`---\nname: clawith_sync\ndescription: Sync with Clawith platform\n---\n\n# Clawith Sync\n\n## When to use\nCheck for new messages from Clawith during every heartbeat.\n\n## Instructions\n\n### 1. Check inbox\nGET ${window.location.origin}/api/gateway/poll\nHeader: X-Api-Key: ${createdApiKey}\n\n### 2. Report results\nPOST ${window.location.origin}/api/gateway/report\nHeader: X-Api-Key: ${createdApiKey}\nBody: {"message_id": "<id>", "result": "<response>"}`}</pre>
+                            }}>{`Please configure yourself to sync with Clawith platform by doing the following two things:
+
+1. Create a skill file at skills/clawith_sync.md with this content:
+
+---
+name: clawith_sync
+description: Sync with Clawith platform
+---
+
+# Clawith Sync
+
+## When to use
+Check for new messages from Clawith during every heartbeat.
+
+## Instructions
+
+### 1. Check inbox
+GET ${window.location.origin}/api/gateway/poll
+Header: X-Api-Key: ${createdApiKey}
+
+### 2. Report results
+POST ${window.location.origin}/api/gateway/report
+Header: X-Api-Key: ${createdApiKey}
+Body: {"message_id": "<id>", "result": "<response>"}
+
+2. Add this line to your HEARTBEAT.md:
+- Check Clawith inbox using the clawith_sync skill`}</pre>
                             <button className="btn btn-ghost" style={{ position: 'absolute', top: '4px', right: '4px', fontSize: '11px' }}
                                 onClick={() => {
-                                    const text = `---\nname: clawith_sync\ndescription: Sync with Clawith platform\n---\n\n# Clawith Sync\n\n## When to use\nCheck for new messages from Clawith during every heartbeat.\n\n## Instructions\n\n### 1. Check inbox\nGET ${window.location.origin}/api/gateway/poll\nHeader: X-Api-Key: ${createdApiKey}\n\n### 2. Report results\nPOST ${window.location.origin}/api/gateway/report\nHeader: X-Api-Key: ${createdApiKey}\nBody: {"message_id": "<id>", "result": "<response>"}`;
+                                    const text = `Please configure yourself to sync with Clawith platform by doing the following two things:\n\n1. Create a skill file at skills/clawith_sync.md with this content:\n\n---\nname: clawith_sync\ndescription: Sync with Clawith platform\n---\n\n# Clawith Sync\n\n## When to use\nCheck for new messages from Clawith during every heartbeat.\n\n## Instructions\n\n### 1. Check inbox\nGET ${window.location.origin}/api/gateway/poll\nHeader: X-Api-Key: ${createdApiKey}\n\n### 2. Report results\nPOST ${window.location.origin}/api/gateway/report\nHeader: X-Api-Key: ${createdApiKey}\nBody: {"message_id": "<id>", "result": "<response>"}\n\n2. Add this line to your HEARTBEAT.md:\n- Check Clawith inbox using the clawith_sync skill`;
                                     navigator.clipboard.writeText(text);
                                 }}
                             >{t('common.copy', 'Copy')}</button>
                         </div>
                     </div>
 
-                    <div style={{ marginBottom: '24px' }}>
-                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>
-                            {t('openclaw.step2Title', 'Step 2: Add to HEARTBEAT.md')}
-                        </label>
-                        <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '8px' }}>
-                            {t('openclaw.step2Desc', 'Add this line to your OpenClaw\'s HEARTBEAT.md')}
-                        </p>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                            <code style={{
-                                flex: 1, padding: '10px 12px', background: 'var(--bg-secondary)', borderRadius: '6px',
-                                fontSize: '12px', border: '1px solid var(--border-default)',
-                            }}>- Check Clawith inbox using the clawith_sync skill</code>
-                            <button className="btn btn-secondary" onClick={() => navigator.clipboard.writeText('- Check Clawith inbox using the clawith_sync skill')}>
-                                {t('common.copy', 'Copy')}
-                            </button>
+                    {/* API Key — collapsed by default */}
+                    <details style={{ marginBottom: '24px' }}>
+                        <summary style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none' }}>
+                            API Key
+                        </summary>
+                        <div style={{ marginTop: '8px' }}>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <code style={{
+                                    flex: 1, padding: '10px 12px', background: 'var(--bg-secondary)', borderRadius: '6px',
+                                    fontSize: '13px', fontFamily: 'monospace', wordBreak: 'break-all',
+                                    border: '1px solid var(--border-default)',
+                                }}>{createdApiKey}</code>
+                                <button className="btn btn-secondary" onClick={() => navigator.clipboard.writeText(createdApiKey)}>
+                                    {t('common.copy', 'Copy')}
+                                </button>
+                            </div>
+                            <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '6px' }}>
+                                {t('openclaw.keyNote', 'This key is already embedded in the instruction above. Save it separately if needed for manual configuration.')}
+                            </p>
                         </div>
-                    </div>
+                    </details>
 
                     <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => navigate(`/agents/${agent.id}`)}>
                         {t('openclaw.goToAgent', 'Go to Agent Page')}

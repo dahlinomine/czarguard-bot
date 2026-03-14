@@ -2966,9 +2966,8 @@ function AgentDetailInner() {
                                                 }
                                                 {/* Assistant message with no text content: either show inline thinking or skip entirely */}
                                                 if (msg.role === 'assistant' && !msg.content) {
-                                                    // If this is the last message and actively streaming, show thinking dots (handled below)
-                                                    const isLastMsg = i === chatMessages.filter((m: any) => m.role !== 'tool_call').length - 1 || i === chatMessages.length - 1;
-                                                    if (!isLastMsg || !(isStreaming || isWaiting)) {
+                                                    // Only show as full bubble with thinking dots if it's the very last message AND actively streaming
+                                                    if (i < chatMessages.length - 1 || !(isStreaming || isWaiting)) {
                                                         if (msg.thinking) {
                                                             return (
                                                                 <div key={i} style={{ paddingLeft: '36px', marginBottom: '6px' }}>
