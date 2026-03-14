@@ -676,6 +676,7 @@ export default function EnterpriseSettings() {
     const [allTools, setAllTools] = useState<any[]>([]);
     const [showAddMCP, setShowAddMCP] = useState(false);
     const [mcpForm, setMcpForm] = useState({ server_url: '', server_name: '' });
+    const [mcpRawInput, setMcpRawInput] = useState('');
     const [mcpTestResult, setMcpTestResult] = useState<any>(null);
     const [mcpTesting, setMcpTesting] = useState(false);
     const [editingToolId, setEditingToolId] = useState<string | null>(null);
@@ -1238,9 +1239,9 @@ export default function EnterpriseSettings() {
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                         <div>
                                             <label style={{ display: 'block', fontSize: '12px', marginBottom: '4px' }}>JSON Config</label>
-                                            <textarea className="form-input" value={mcpForm.server_url} onChange={e => {
+                                            <textarea className="form-input" value={mcpRawInput} onChange={e => {
                                                 const val = e.target.value;
-                                                setMcpForm(p => ({ ...p, server_url: val }));
+                                                setMcpRawInput(val);
                                                 // Auto-parse JSON config format
                                                 try {
                                                     const parsed = JSON.parse(val);
@@ -1252,7 +1253,10 @@ export default function EnterpriseSettings() {
                                                         const url = cfg.url || cfg.uri || '';
                                                         setMcpForm({ server_name: name, server_url: url });
                                                     }
-                                                } catch { /* not JSON yet, that's fine */ }
+                                                } catch {
+                                                    // Not JSON — treat as plain URL
+                                                    setMcpForm(p => ({ ...p, server_url: val }));
+                                                }
                                             }} placeholder={'{\n  "mcpServers": {\n    "server-name": {\n      "type": "sse",\n      "url": "https://mcp.example.com/sse"\n    }\n  }\n}\n\nor paste a URL directly'} style={{ minHeight: '120px', fontFamily: 'var(--font-mono)', fontSize: '12px', resize: 'vertical' }} />
                                         </div>
                                         {mcpForm.server_name && (
@@ -1276,7 +1280,7 @@ export default function EnterpriseSettings() {
                                                 } catch (e: any) { setMcpTestResult({ ok: false, error: e.message }); }
                                                 setMcpTesting(false);
                                             }}>{mcpTesting ? t('enterprise.tools.testing') : t('enterprise.tools.testConnection')}</button>
-                                            <button className="btn btn-secondary" onClick={() => { setShowAddMCP(false); setMcpTestResult(null); setMcpForm({ server_url: '', server_name: '' }); }}>{t('common.cancel')}</button>
+                                            <button className="btn btn-secondary" onClick={() => { setShowAddMCP(false); setMcpTestResult(null); setMcpForm({ server_url: '', server_name: '' }); setMcpRawInput(''); }}>{t('common.cancel')}</button>
                                         </div>
                                         {mcpTestResult && (
                                             <div className="card" style={{ padding: '12px', background: mcpTestResult.ok ? 'rgba(0,200,100,0.1)' : 'rgba(255,0,0,0.1)' }}>
