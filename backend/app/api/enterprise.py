@@ -19,11 +19,20 @@ from app.schemas.schemas import (
 )
 from app.services.autonomy_service import autonomy_service
 from app.services.enterprise_sync import enterprise_sync_service
+from app.services.llm_utils import get_provider_manifest
 
 router = APIRouter(prefix="/enterprise", tags=["enterprise"])
 
 
 # ─── LLM Model Pool ────────────────────────────────────
+
+@router.get("/llm-providers")
+async def list_llm_providers(
+    current_user: User = Depends(get_current_user),
+):
+    """List supported LLM providers and capabilities from registry."""
+    return get_provider_manifest()
+
 
 @router.get("/llm-models", response_model=list[LLMModelOut])
 async def list_llm_models(

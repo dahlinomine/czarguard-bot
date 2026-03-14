@@ -258,10 +258,21 @@ async def call_llm(
             )
         except LLMError as e:
             # Record accumulated tokens before returning error
+            print(
+                f"[LLM] LLMError provider={getattr(model, 'provider', '?')} "
+                f"model={getattr(model, 'model', '?')} round={round_i + 1}: {e}",
+                flush=True,
+            )
             if agent_id and _accumulated_tokens > 0:
                 await record_token_usage(agent_id, _accumulated_tokens)
             return f"[LLM Error] {e}"
         except Exception as e:
+            print(
+                f"[LLM] Unexpected error provider={getattr(model, 'provider', '?')} "
+                f"model={getattr(model, 'model', '?')} round={round_i + 1}: "
+                f"{type(e).__name__}: {str(e)[:300]}",
+                flush=True,
+            )
             if agent_id and _accumulated_tokens > 0:
                 await record_token_usage(agent_id, _accumulated_tokens)
             return f"[LLM call error] {type(e).__name__}: {str(e)[:200]}"
@@ -865,4 +876,3 @@ async def websocket_chat(
             await websocket.close(code=1011)
         except Exception:
             pass
-

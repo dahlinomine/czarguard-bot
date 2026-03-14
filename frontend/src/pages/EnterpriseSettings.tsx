@@ -28,6 +28,27 @@ interface LLMModel {
     base_url?: string; max_tokens_per_day?: number; enabled: boolean; supports_vision?: boolean; created_at: string;
 }
 
+interface LLMProviderSpec {
+    provider: string;
+    display_name: string;
+    protocol: string;
+    default_base_url?: string | null;
+    supports_tool_choice: boolean;
+    default_max_tokens: number;
+}
+
+const FALLBACK_LLM_PROVIDERS: LLMProviderSpec[] = [
+    { provider: 'anthropic', display_name: 'Anthropic', protocol: 'anthropic', default_base_url: 'https://api.anthropic.com', supports_tool_choice: false, default_max_tokens: 4096 },
+    { provider: 'openai', display_name: 'OpenAI', protocol: 'openai_compatible', default_base_url: 'https://api.openai.com/v1', supports_tool_choice: true, default_max_tokens: 16384 },
+    { provider: 'deepseek', display_name: 'DeepSeek', protocol: 'openai_compatible', default_base_url: 'https://api.deepseek.com/v1', supports_tool_choice: true, default_max_tokens: 16384 },
+    { provider: 'minimax', display_name: 'MiniMax', protocol: 'openai_compatible', default_base_url: 'https://api.minimaxi.com/v1', supports_tool_choice: true, default_max_tokens: 16384 },
+    { provider: 'qwen', display_name: 'Qwen (DashScope)', protocol: 'openai_compatible', default_base_url: 'https://dashscope.aliyuncs.com/compatible-mode/v1', supports_tool_choice: true, default_max_tokens: 8192 },
+    { provider: 'zhipu', display_name: 'Zhipu', protocol: 'openai_compatible', default_base_url: 'https://open.bigmodel.cn/api/paas/v4', supports_tool_choice: true, default_max_tokens: 16384 },
+    { provider: 'gemini', display_name: 'Gemini', protocol: 'gemini', default_base_url: 'https://generativelanguage.googleapis.com/v1beta', supports_tool_choice: true, default_max_tokens: 16384 },
+    { provider: 'openrouter', display_name: 'OpenRouter', protocol: 'openai_compatible', default_base_url: 'https://openrouter.ai/api/v1', supports_tool_choice: true, default_max_tokens: 16384 },
+    { provider: 'custom', display_name: 'Custom', protocol: 'openai_compatible', default_base_url: '', supports_tool_choice: true, default_max_tokens: 16384 },
+];
+
 
 
 // ─── Department Tree ───────────────────────────────
@@ -749,6 +770,12 @@ export default function EnterpriseSettings() {
     const [showAddModel, setShowAddModel] = useState(false);
     const [editingModelId, setEditingModelId] = useState<string | null>(null);
     const [modelForm, setModelForm] = useState({ provider: 'anthropic', model: '', api_key: '', base_url: '', label: '', supports_vision: false });
+    const { data: providerSpecs = [] } = useQuery({
+        queryKey: ['llm-provider-specs'],
+        queryFn: () => fetchJson<LLMProviderSpec[]>('/enterprise/llm-providers'),
+        enabled: activeTab === 'llm',
+    });
+    const providerOptions = providerSpecs.length > 0 ? providerSpecs : FALLBACK_LLM_PROVIDERS;
     const addModel = useMutation({
         mutationFn: (data: any) => fetchJson('/enterprise/llm-models', { method: 'POST', body: JSON.stringify(data) }),
         onSuccess: () => { qc.invalidateQueries({ queryKey: ['llm-models'] }); setShowAddModel(false); setEditingModelId(null); },
@@ -846,14 +873,12 @@ export default function EnterpriseSettings() {
                                     <div className="form-group">
                                         <label className="form-label">Provider</label>
                                         <select className="form-input" value={modelForm.provider} onChange={e => setModelForm({ ...modelForm, provider: e.target.value })}>
-                                            <option value="anthropic">Anthropic</option>
-                                            <option value="openai">OpenAI</option>
-                                            <option value="deepseek">DeepSeek</option>
-                                            <option value="minimax">MiniMax</option>
-                                            <option value="qwen">Qwen (DashScope)</option>
-                                            <option value="zhipu">Zhipu</option>
-                                            <option value="openrouter">OpenRouter</option>
-                                            <option value="custom">Custom</option>
+                                            {providerOptions.map((p) => (
+                                                <option key={p.provider} value={p.provider}>{p.display_name}</option>
+                                            ))}
+                                            {!providerOptions.some((p) => p.provider === modelForm.provider) && (
+                                                <option value={modelForm.provider}>{modelForm.provider}</option>
+                                            )}
                                         </select>
                                     </div>
                                     <div className="form-group">
