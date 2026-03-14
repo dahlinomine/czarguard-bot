@@ -630,8 +630,12 @@ async def websocket_chat(
                 try:
                     print(f"[WS] Calling LLM {llm_model.model} (streaming)...")
                     
+                    # Accumulate partial content for abort handling
+                    partial_chunks: list[str] = []
+                    
                     async def stream_to_ws(text: str):
                         """Send each chunk to client in real-time."""
+                        partial_chunks.append(text)
                         await websocket.send_json({"type": "chunk", "content": text})
                     
                     async def tool_call_to_ws(data: dict):
@@ -668,7 +672,10 @@ async def websocket_chat(
                         thinking_content.append(text)
                         await websocket.send_json({"type": "thinking", "content": text})
 
-                    assistant_response = await call_llm(
+                    import asyncio as _aio
+
+                    # Run call_llm as a cancellable task
+                    llm_task = _aio.create_task(call_llm(
                         llm_model,
                         conversation[-ctx_size:],
                         agent_name,
@@ -679,8 +686,45 @@ async def websocket_chat(
                         on_tool_call=tool_call_to_ws,
                         on_thinking=thinking_to_ws,
                         supports_vision=getattr(llm_model, 'supports_vision', False),
-                    )
-                    print(f"[WS] LLM response: {assistant_response[:80]}")
+                    ))
+
+                    # Listen for abort while LLM is running
+                    aborted = False
+                    queued_messages: list[dict] = []
+                    while not llm_task.done():
+                        try:
+                            msg = await _aio.wait_for(
+                                websocket.receive_json(), timeout=0.5
+                            )
+                            if msg.get("type") == "abort":
+                                print(f"[WS] Abort received, cancelling LLM task")
+                                llm_task.cancel()
+                                aborted = True
+                                break
+                            else:
+                                # Queue non-abort messages for later
+                                queued_messages.append(msg)
+                        except _aio.TimeoutError:
+                            continue
+                        except WebSocketDisconnect:
+                            llm_task.cancel()
+                            raise
+
+                    if aborted:
+                        # Wait for task to finish cancelling
+                        try:
+                            await llm_task
+                        except (_aio.CancelledError, Exception):
+                            pass
+                        partial_text = "".join(partial_chunks).strip()
+                        if partial_text:
+                            assistant_response = partial_text + "\n\n*[Generation stopped]*"
+                        else:
+                            assistant_response = "*[Generation stopped]*"
+                        print(f"[WS] LLM aborted, partial: {assistant_response[:80]}")
+                    else:
+                        assistant_response = await llm_task
+                        print(f"[WS] LLM response: {assistant_response[:80]}")
 
                     # Update last_active_at
                     from datetime import datetime, timezone as tz
@@ -702,6 +746,8 @@ async def websocket_chat(
                     # Log activity
                     from app.services.activity_logger import log_activity
                     await log_activity(agent_id, "chat_reply", f"Replied to web chat: {assistant_response[:80]}", detail={"channel": "web", "user_text": content[:200], "reply": assistant_response[:500]})
+                except WebSocketDisconnect:
+                    raise
                 except Exception as e:
                     print(f"[WS] LLM error: {e}")
                     import traceback

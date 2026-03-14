@@ -3033,7 +3033,13 @@ function AgentDetailInner() {
                                                 onPaste={handlePaste}
                                                 placeholder={!wsConnected && (!activeSession?.user_id || !currentUser || activeSession.user_id === String(currentUser?.id)) ? 'Connecting...' : attachedFile ? t('agent.chat.askAboutFile', { name: attachedFile.name }) : t('chat.placeholder')}
                                                 disabled={!wsConnected || isWaiting || isStreaming} style={{ flex: 1 }} autoFocus />
-                                            <button className="btn btn-primary" onClick={sendChatMsg} disabled={!wsConnected || isWaiting || isStreaming || (!chatInput.trim() && !attachedFile)} style={{ padding: '6px 16px' }}>{t('chat.send')}</button>
+                                            {(isStreaming || isWaiting) ? (
+                                                <button className="btn btn-stop-generation" onClick={() => { if (wsRef.current?.readyState === WebSocket.OPEN) { wsRef.current.send(JSON.stringify({ type: 'abort' })); setIsStreaming(false); setIsWaiting(false); } }} style={{ padding: '6px 16px' }} title={t('chat.stop', 'Stop')}>
+                                                    <span className="stop-icon" />
+                                                </button>
+                                            ) : (
+                                                <button className="btn btn-primary" onClick={sendChatMsg} disabled={!wsConnected || (!chatInput.trim() && !attachedFile)} style={{ padding: '6px 16px' }}>{t('chat.send')}</button>
+                                            )}
                                         </div>
                                     </>
                                 )}

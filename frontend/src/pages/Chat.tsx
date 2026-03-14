@@ -525,9 +525,15 @@ export default function Chat() {
                         placeholder={attachedFile ? t('agent.chat.askAboutFile', { name: attachedFile.name }) : t('chat.placeholder')}
                         disabled={!connected || isWaiting || streaming}
                     />
-                    <button className="btn btn-primary" onClick={sendMessage} disabled={!connected || isWaiting || streaming || (!input.trim() && !attachedFile)}>
-                        {t('chat.send')}
-                    </button>
+                    {(streaming || isWaiting) ? (
+                        <button className="btn btn-stop-generation" onClick={() => { if (wsRef.current?.readyState === WebSocket.OPEN) { wsRef.current.send(JSON.stringify({ type: 'abort' })); setStreaming(false); setIsWaiting(false); } }} title={t('chat.stop', 'Stop')}>
+                            <span className="stop-icon" />
+                        </button>
+                    ) : (
+                        <button className="btn btn-primary" onClick={sendMessage} disabled={!connected || (!input.trim() && !attachedFile)}>
+                            {t('chat.send')}
+                        </button>
+                    )}
                 </div>
             </div>
         </div>
