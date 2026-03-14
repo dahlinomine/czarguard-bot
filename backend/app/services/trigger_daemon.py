@@ -659,8 +659,8 @@ async def _tick():
                     if trigger:
                         trigger.last_fired_at = now
                         trigger.fire_count += 1
-                        # Auto-disable single-shot types immediately
-                        if trigger.type in ("once", "on_message", "webhook"):
+                        # Auto-disable single-shot types only
+                        if trigger.type == "once":
                             trigger.is_enabled = False
                         if trigger.type == "webhook" and trigger.config:
                             trigger.config = {
