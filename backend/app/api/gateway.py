@@ -90,6 +90,7 @@ async def poll_messages(
     Returns all pending messages and marks them as delivered.
     Also updates openclaw_last_seen for online status tracking.
     """
+    print(f"[Gateway] poll called, key_prefix={x_api_key[:8]}...")
     agent = await _get_agent_by_key(x_api_key, db)
 
     # Update last seen
@@ -138,10 +139,13 @@ async def poll_messages(
 @router.post("/report")
 async def report_result(
     body: GatewayReportRequest,
-    x_api_key: str = Header(..., alias="X-Api-Key"),
+    x_api_key: str = Header(None, alias="X-Api-Key"),
     db: AsyncSession = Depends(get_db),
 ):
     """OpenClaw agent reports the result of a processed message."""
+    if not x_api_key:
+        raise HTTPException(status_code=401, detail="Missing X-Api-Key header")
+    print(f"[Gateway] report called, key_prefix={x_api_key[:8]}..., msg_id={body.message_id}")
     agent = await _get_agent_by_key(x_api_key, db)
 
     result = await db.execute(
