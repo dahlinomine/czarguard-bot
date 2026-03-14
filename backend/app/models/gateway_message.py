@@ -24,6 +24,8 @@ class GatewayMessage(Base):
     # Sender (one of these may be None)
     sender_agent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("agents.id"))
     sender_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    # Chat session tracking for routing responses back
+    conversation_id: Mapped[str | None] = mapped_column(String(100))
     # Message content
     content: Mapped[str] = mapped_column(Text, nullable=False)
     # Status tracking

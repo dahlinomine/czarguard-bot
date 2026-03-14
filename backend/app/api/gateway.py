@@ -161,7 +161,31 @@ async def report_result(
     # Update last seen
     agent.openclaw_last_seen = datetime.now(timezone.utc)
 
+    # Save result as assistant chat message and push via WebSocket
+    if body.result and msg.conversation_id:
+        from app.models.chat_message import ChatMessage
+        assistant_msg = ChatMessage(
+            agent_id=agent.id,
+            role="assistant",
+            content=body.result,
+            conversation_id=msg.conversation_id,
+        )
+        db.add(assistant_msg)
+
     await db.commit()
+
+    # Push to WebSocket if user is connected
+    if body.result and msg.conversation_id:
+        try:
+            from app.api.websocket import manager
+            await manager.send_message(str(agent.id), {
+                "type": "done",
+                "role": "assistant",
+                "content": body.result,
+            })
+        except Exception:
+            pass  # User may have disconnected
+
     return {"status": "ok"}
 
 
