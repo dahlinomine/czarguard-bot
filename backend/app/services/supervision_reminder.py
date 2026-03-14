@@ -105,11 +105,14 @@ async def _get_agent_reply(target_agent, message: str, db) -> str | None:
 
     Returns the reply text, or None if the agent can't respond.
     """
-    import json as _json
-    import httpx
     from app.models.llm import LLMModel
     from app.services.agent_context import build_agent_context
-    from app.services.llm_utils import get_provider_base_url
+    from app.services.llm_utils import (
+        get_provider_base_url,
+        create_llm_client,
+        LLMMessage,
+        LLMError,
+    )
 
     model_id = target_agent.primary_model_id or target_agent.fallback_model_id
     if not model_id:
@@ -125,35 +128,36 @@ async def _get_agent_reply(target_agent, message: str, db) -> str | None:
     if not base_url:
         return None
 
-    url = f"{base_url.rstrip('/')}/chat/completions"
     system_prompt = await build_agent_context(
         target_agent.id, target_agent.name, target_agent.role_description or ""
     )
 
     messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": message},
+        LLMMessage(role="system", content=system_prompt),
+        LLMMessage(role="user", content=message),
     ]
 
+    client = create_llm_client(
+        provider=model.provider,
+        api_key=model.api_key_encrypted,
+        model=model.model,
+        base_url=base_url,
+        timeout=60.0,
+    )
     try:
-        async with httpx.AsyncClient(timeout=60) as client:
-            resp = await client.post(
-                url,
-                json={
-                    "model": model.model,
-                    "messages": messages,
-                    "temperature": 0.7,
-                    "max_tokens": 512,
-                },
-                headers={"Authorization": f"Bearer {model.api_key_encrypted}"},
-            )
-            data = resp.json()
-
-        if "choices" in data and data["choices"]:
-            content = data["choices"][0].get("message", {}).get("content", "")
-            return content.strip() if content else None
+        response = await client.complete(
+            messages=messages,
+            temperature=0.7,
+            max_tokens=512,
+        )
+        content = (response.content or "").strip()
+        return content if content else None
+    except LLMError as e:
+        logger.error(f"_get_agent_reply LLM error: {e}")
     except Exception as e:
         logger.error(f"_get_agent_reply LLM call failed: {e}")
+    finally:
+        await client.close()
     return None
 
 

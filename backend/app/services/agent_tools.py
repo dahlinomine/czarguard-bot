@@ -2430,7 +2430,6 @@ async def _send_message_to_agent(from_agent_id: uuid.UUID, args: dict) -> str:
             # Prepare target LLM
             from app.services.agent_context import build_agent_context
             from app.models.llm import LLMModel
-            import httpx
 
             if not target.primary_model_id:
                 return f"⚠️ {target.name} has no LLM model configured"
@@ -2483,11 +2482,19 @@ async def _send_message_to_agent(from_agent_id: uuid.UUID, args: dict) -> str:
             await db.commit()
 
             # Call target LLM with tool support (multi-round)
-            from app.services.llm_utils import get_provider_base_url
+            from app.services.llm_utils import (
+                get_provider_base_url,
+                create_llm_client,
+                LLMMessage,
+            )
             from app.services.agent_tools import get_agent_tools_for_llm, execute_tool
             base_url = get_provider_base_url(target_model.provider, target_model.base_url)
-            url = f"{base_url.rstrip('/')}/chat/completions"
-            full_msgs = [{"role": "system", "content": target_system}] + conversation_messages
+            if not base_url:
+                return f"⚠️ {target.name}'s model has no API base URL configured"
+
+            full_msgs: list[LLMMessage] = [LLMMessage(role="system", content=target_system)] + [
+                LLMMessage(role=m["role"], content=m["content"]) for m in conversation_messages
+            ]
 
             # Load tools for target agent
             tools_for_llm = await get_agent_tools_for_llm(target.id)
@@ -2498,67 +2505,72 @@ async def _send_message_to_agent(from_agent_id: uuid.UUID, args: dict) -> str:
 
             from app.services.token_tracker import record_token_usage, extract_usage_tokens, estimate_tokens_from_chars
 
-            async with httpx.AsyncClient(timeout=120) as client:
+            llm_client = create_llm_client(
+                provider=target_model.provider,
+                api_key=target_model.api_key_encrypted,
+                model=target_model.model,
+                base_url=base_url,
+                timeout=120.0,
+            )
+            try:
                 for _round in range(max_tool_rounds):
-                    req_body: dict = {
-                        "model": target_model.model,
-                        "messages": full_msgs,
-                        "temperature": 0.7,
-                        "max_tokens": 4096,
-                    }
-                    if tools_for_llm:
-                        req_body["tools"] = tools_for_llm
-                        req_body["tool_choice"] = "auto"
-
-                    resp = await client.post(
-                        url,
-                        json=req_body,
-                        headers={"Authorization": f"Bearer {target_model.api_key_encrypted}"},
+                    response = await llm_client.complete(
+                        messages=full_msgs,
+                        tools=tools_for_llm if tools_for_llm else None,
+                        temperature=0.7,
+                        max_tokens=4096,
                     )
-                    data = resp.json()
 
                     # Track tokens from API response
-                    real_tokens = extract_usage_tokens(data.get("usage"))
+                    real_tokens = extract_usage_tokens(response.usage)
                     if real_tokens:
                         _a2a_accumulated_tokens += real_tokens
                     else:
-                        round_chars = sum(len(m.get("content") or '') for m in full_msgs if isinstance(m.get("content"), str))
+                        round_chars = sum(len(m.content or '') for m in full_msgs if isinstance(m.content, str))
                         _a2a_accumulated_tokens += estimate_tokens_from_chars(round_chars)
 
-                    if "choices" not in data or not data["choices"]:
-                        break
-
-                    choice = data["choices"][0]
-                    msg = choice.get("message", {})
-
                     # Check for tool calls
-                    tool_calls = msg.get("tool_calls")
-                    if tool_calls:
+                    if response.tool_calls:
                         # Add assistant message with tool calls to conversation
-                        full_msgs.append(msg)
+                        full_msgs.append(LLMMessage(
+                            role="assistant",
+                            content=response.content or None,
+                            tool_calls=[{
+                                "id": tc.get("id", ""),
+                                "type": "function",
+                                "function": tc.get("function", {}),
+                            } for tc in response.tool_calls],
+                            reasoning_content=response.reasoning_content,
+                        ))
 
                         # Execute each tool call
-                        for tc in tool_calls:
+                        for tc in response.tool_calls:
                             fn = tc.get("function", {})
                             tool_name = fn.get("name", "")
-                            try:
-                                tool_args = json.loads(fn.get("arguments", "{}"))
-                            except Exception:
-                                tool_args = {}
+                            raw_args = fn.get("arguments", "{}")
+                            if isinstance(raw_args, dict):
+                                tool_args = raw_args
+                            else:
+                                try:
+                                    tool_args = json.loads(raw_args) if raw_args else {}
+                                except Exception:
+                                    tool_args = {}
 
                             tool_result = await execute_tool(tool_name, tool_args, target.id, owner_id)
 
                             # Add tool result to conversation
-                            full_msgs.append({
-                                "role": "tool",
-                                "tool_call_id": tc.get("id", ""),
-                                "content": tool_result[:4000],
-                            })
+                            full_msgs.append(LLMMessage(
+                                role="tool",
+                                tool_call_id=tc.get("id", ""),
+                                content=str(tool_result)[:4000],
+                            ))
                         continue  # Next LLM round
 
                     # No tool calls — this is the final text response
-                    target_reply = msg.get("content", "")
+                    target_reply = response.content or ""
                     break
+            finally:
+                await llm_client.close()
 
             # Record accumulated A2A tokens for the target agent
             if _a2a_accumulated_tokens > 0:
@@ -4520,4 +4532,3 @@ async def _handle_email_tool(tool_name: str, agent_id: uuid.UUID, ws: Path, argu
             return f"❌ Unknown email tool: {tool_name}"
     except Exception as e:
         return f"❌ Email tool error: {str(e)[:200]}"
-
