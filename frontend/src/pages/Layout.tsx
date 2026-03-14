@@ -309,7 +309,8 @@ export default function Layout() {
     const createCompany = async () => {
         if (!newCompanyName.trim()) return;
         const token = localStorage.getItem('token');
-        const slug = newCompanyName.toLowerCase().replace(/[\s]+/g, '-').replace(/[^a-z0-9_-]/g, '').slice(0, 50);
+        const slug = newCompanyName.toLowerCase().replace(/[\s]+/g, '-').replace(/[^a-z0-9_-]/g, '').slice(0, 50)
+            || `company-${Date.now().toString(36)}`;
         await fetch('/api/tenants/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
@@ -473,18 +474,8 @@ export default function Layout() {
                         );
                         return (
                             <>
-                                {myAgents.length > 0 && (
-                                    <div className="sidebar-section">
-                                        <div className="sidebar-section-title">{t('nav.myCreated')}</div>
-                                        {myAgents.map(renderAgent)}
-                                    </div>
-                                )}
-                                {sharedAgents.length > 0 && (
-                                    <div className="sidebar-section">
-                                        <div className="sidebar-section-title">{t('nav.companyShared')}</div>
-                                        {sharedAgents.map(renderAgent)}
-                                    </div>
-                                )}
+                                {myAgents.length > 0 && myAgents.map(renderAgent)}
+                                {sharedAgents.length > 0 && sharedAgents.map(renderAgent)}
                                 {agents.length === 0 && (
                                     <div className="sidebar-section">
                                         <div className="sidebar-section-title">{t('nav.myAgents')}</div>
