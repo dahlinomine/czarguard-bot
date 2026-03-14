@@ -416,19 +416,19 @@ select:focus {
 }
 
 .sidebar-agent-item.owned .sidebar-item {
-  background: var(--accent-subtle);
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.10) 0%, transparent 70%);
 }
 
 .sidebar-agent-item.owned .sidebar-item:hover {
-  background: rgba(225, 225, 232, 0.12);
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.16) 0%, rgba(99, 102, 241, 0.04) 70%);
 }
 
 [data-theme="light"] .sidebar-agent-item.owned .sidebar-item {
-  background: rgba(58, 58, 66, 0.05);
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.08) 0%, transparent 70%);
 }
 
 [data-theme="light"] .sidebar-agent-item.owned .sidebar-item:hover {
-  background: rgba(58, 58, 66, 0.1);
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.14) 0%, rgba(99, 102, 241, 0.03) 70%);
 }
 
 .sidebar-pin-btn {

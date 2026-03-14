@@ -390,6 +390,7 @@ async def websocket_chat(
     role_description = ""
     welcome_message = ""
     llm_model = None
+    fallback_llm_model = None
     history_messages = []
 
     try:
@@ -422,7 +423,22 @@ async def websocket_chat(
                     select(LLMModel).where(LLMModel.id == agent.primary_model_id)
                 )
                 llm_model = model_result.scalar_one_or_none()
-                print(f"[WS] Model loaded: {llm_model.model if llm_model else 'None'}")
+                print(f"[WS] Primary model loaded: {llm_model.model if llm_model else 'None'}")
+
+            # Load fallback model
+            if agent.fallback_model_id:
+                fb_result = await db.execute(
+                    select(LLMModel).where(LLMModel.id == agent.fallback_model_id)
+                )
+                fallback_llm_model = fb_result.scalar_one_or_none()
+                if fallback_llm_model:
+                    print(f"[WS] Fallback model loaded: {fallback_llm_model.model}")
+
+            # Config-level fallback: primary missing -> use fallback
+            if not llm_model and fallback_llm_model:
+                llm_model = fallback_llm_model
+                fallback_llm_model = None  # No further fallback available
+                print(f"[WS] Primary model unavailable, using fallback: {llm_model.model}")
 
             # Resolve or create chat session
             from app.models.chat_session import ChatSession
@@ -690,7 +706,30 @@ async def websocket_chat(
                     print(f"[WS] LLM error: {e}")
                     import traceback
                     traceback.print_exc()
-                    assistant_response = f"[LLM call error] {str(e)[:200]}"
+                    # Runtime fallback: primary model failed -> retry with fallback model
+                    if fallback_llm_model:
+                        print(f"[WS] Primary model failed, retrying with fallback: {fallback_llm_model.model}")
+                        try:
+                            await websocket.send_json({"type": "info", "content": f"Primary model error, switching to fallback model ({fallback_llm_model.model})..."})
+                            assistant_response = await call_llm(
+                                fallback_llm_model,
+                                conversation[-ctx_size:],
+                                agent_name,
+                                role_description,
+                                agent_id=agent_id,
+                                user_id=user_id,
+                                on_chunk=stream_to_ws,
+                                on_tool_call=tool_call_to_ws,
+                                on_thinking=thinking_to_ws,
+                                supports_vision=getattr(fallback_llm_model, 'supports_vision', False),
+                            )
+                            print(f"[WS] Fallback LLM response: {assistant_response[:80]}")
+                        except Exception as e2:
+                            print(f"[WS] Fallback LLM also failed: {e2}")
+                            traceback.print_exc()
+                            assistant_response = f"[LLM call error] Primary: {str(e)[:100]} | Fallback: {str(e2)[:100]}"
+                    else:
+                        assistant_response = f"[LLM call error] {str(e)[:200]}"
             else:
                 assistant_response = f"⚠️ {agent_name} has no LLM model configured. Please select a model in the agent's Settings tab."
 
