@@ -2833,19 +2833,23 @@ function AgentDetailInner() {
                                             </div>
                                             {historyMsgs.map((m: any, i: number) => {
                                                 if (m.role === 'tool_call') {
-                                                    let parsed: any = {}; try { parsed = typeof m.content === 'string' ? JSON.parse(m.content) : m.content; } catch { parsed = { name: 'tool', result: m.content }; }
+                                                    const tName = m.toolName || (() => { try { return JSON.parse(m.content || '{}').name; } catch { return 'tool'; } })();
+                                                    const tArgs = m.toolArgs || (() => { try { return JSON.parse(m.content || '{}').args; } catch { return {}; } })();
+                                                    const tResult = m.toolResult ?? (() => { try { return JSON.parse(m.content || '{}').result; } catch { return ''; } })();
                                                     return (
                                                         <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '6px', paddingLeft: '36px', minWidth: 0 }}>
                                                             <details style={{ flex: 1, minWidth: 0, borderRadius: '8px', background: 'var(--accent-subtle)', border: '1px solid var(--accent-subtle)', fontSize: '12px', overflow: 'hidden' }}>
                                                                 <summary style={{ padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', userSelect: 'none', listStyle: 'none', overflow: 'hidden' }}>
-                                                                    <span style={{ fontWeight: 600, color: 'var(--accent-text)' }}>{parsed.name || 'tool'}</span>
-                                                                    <span style={{ color: 'var(--text-tertiary)', fontSize: '11px', marginLeft: 'auto' }}>done</span>
+                                                                    <span style={{ fontSize: '13px' }}>⚡</span>
+                                                                    <span style={{ fontWeight: 600, color: 'var(--accent-text)' }}>{tName}</span>
+                                                                    {tArgs && typeof tArgs === 'object' && Object.keys(tArgs).length > 0 && <span style={{ color: 'var(--text-tertiary)', fontSize: '11px', fontFamily: 'var(--font-mono)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{`(${Object.entries(tArgs).map(([k, v]) => `${k}: ${typeof v === 'string' ? v.slice(0, 30) : JSON.stringify(v)}`).join(', ')})`}</span>}
                                                                 </summary>
-                                                                {parsed.result && <div style={{ padding: '4px 10px 8px', color: 'var(--text-secondary)', fontSize: '11px', fontFamily: 'var(--font-mono)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: '160px', overflow: 'auto' }}>{parsed.result}</div>}
+                                                                {tResult && <div style={{ padding: '4px 10px 8px' }}><div style={{ color: 'var(--text-secondary)', fontSize: '11px', fontFamily: 'var(--font-mono)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: '240px', overflow: 'auto', background: 'rgba(0,0,0,0.15)', borderRadius: '4px', padding: '4px 6px' }}>{tResult}</div></div>}
                                                             </details>
                                                         </div>
                                                     );
                                                 }
+
                                                 return (
                                                     <div key={i} style={{ display: 'flex', flexDirection: m.role === 'assistant' ? 'row' : 'row-reverse', gap: '8px', marginBottom: '8px' }}>
                                                         <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: m.role === 'assistant' ? 'var(--bg-elevated)' : 'rgba(16,185,129,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', flexShrink: 0, color: 'var(--text-secondary)', fontWeight: 600 }}>{m.sender_name ? m.sender_name[0] : (m.role === 'assistant' ? 'A' : 'U')}</div>
