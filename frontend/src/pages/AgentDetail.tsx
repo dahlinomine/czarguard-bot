@@ -849,6 +849,7 @@ function AgentDetailInner() {
                     role: m.role, content: m.content,
                     ...(m.toolName && { toolName: m.toolName, toolArgs: m.toolArgs, toolStatus: m.toolStatus, toolResult: m.toolResult }),
                     ...(m.thinking && { thinking: m.thinking }),
+                    ...(m.created_at && { timestamp: m.created_at }),
                 })));
             } else {
                 // Other user's session or agent-to-agent: read-only view
@@ -895,7 +896,7 @@ function AgentDetailInner() {
         } catch (e) { alert('Failed: ' + e); }
         setExpirySaving(false);
     };
-    interface ChatMsg { role: 'user' | 'assistant' | 'tool_call'; content: string; fileName?: string; toolName?: string; toolArgs?: any; toolStatus?: 'running' | 'done'; toolResult?: string; thinking?: string; imageUrl?: string; }
+    interface ChatMsg { role: 'user' | 'assistant' | 'tool_call'; content: string; fileName?: string; toolName?: string; toolArgs?: any; toolStatus?: 'running' | 'done'; toolResult?: string; thinking?: string; imageUrl?: string; timestamp?: string; }
     const [chatMessages, setChatMessages] = useState<ChatMsg[]>([]);
     const [chatInput, setChatInput] = useState('');
     const [wsConnected, setWsConnected] = useState(false);
@@ -1080,8 +1081,8 @@ function AgentDetailInner() {
                     setChatMessages(prev => {
                         const last = prev[prev.length - 1];
                         const thinking = (last && last.role === 'assistant' && (last as any)._streaming) ? last.thinking : undefined;
-                        if (last && last.role === 'assistant' && (last as any)._streaming) return [...prev.slice(0, -1), { role: 'assistant', content: d.content, thinking }];
-                        return [...prev, { role: d.role, content: d.content }];
+                        if (last && last.role === 'assistant' && (last as any)._streaming) return [...prev.slice(0, -1), { role: 'assistant', content: d.content, thinking, timestamp: new Date().toISOString() }];
+                        return [...prev, { role: d.role, content: d.content, timestamp: new Date().toISOString() }];
                     });
                     // Silently refresh session list to update last_message_at (no loading spinner)
                     fetchMySessions(true);
@@ -1203,7 +1204,7 @@ function AgentDetailInner() {
 
         setIsWaiting(true);
         setIsStreaming(false);
-        setChatMessages(prev => [...prev, { role: 'user', content: userMsg, fileName: attachedFile?.name, imageUrl: attachedFile?.imageUrl }]);
+        setChatMessages(prev => [...prev, { role: 'user', content: userMsg, fileName: attachedFile?.name, imageUrl: attachedFile?.imageUrl, timestamp: new Date().toISOString() }]);
         wsRef.current.send(JSON.stringify({ content: contentForLLM, display_content: userMsg, file_name: attachedFile?.name || '' }));
         setChatInput(''); setAttachedFile(null);
     };
@@ -2885,6 +2886,7 @@ function AgentDetailInner() {
                                                                     </>
                                                                 );
                                                             })()}
+                                                            {m.created_at && <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', marginTop: '4px', opacity: 0.6 }}>{(() => { const d = new Date(m.created_at); const now = new Date(); const diffMs = now.getTime() - d.getTime(); const isToday = d.toDateString() === now.toDateString(); if (isToday) return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); if (diffMs < 7 * 86400000) return d.toLocaleDateString([], { weekday: 'short' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); })()}</div>}
                                                         </div>
                                                     </div>
                                                 );
@@ -2970,6 +2972,7 @@ function AgentDetailInner() {
                                                                     </div>
                                                                 ) : <MarkdownRenderer content={msg.content} />
                                                             ) : msg.content ? <div style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div> : null}
+                                                            {msg.timestamp && <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', marginTop: '4px', opacity: 0.6, textAlign: msg.role === 'user' ? 'right' : 'left' }}>{(() => { const d = new Date(msg.timestamp); const now = new Date(); const diffMs = now.getTime() - d.getTime(); const isToday = d.toDateString() === now.toDateString(); if (isToday) return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); if (diffMs < 7 * 86400000) return d.toLocaleDateString([], { weekday: 'short' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); })()}</div>}
                                                         </div>
                                                     </div>
                                                 );
