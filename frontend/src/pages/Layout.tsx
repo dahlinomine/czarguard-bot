@@ -260,9 +260,12 @@ export default function Layout() {
     const [newCompanyName, setNewCompanyName] = useState('');
 
     const { data: tenants = [] } = useQuery({
-        queryKey: ['tenants'],
-        queryFn: () => fetchJson<any[]>('/tenants/'),
-        enabled: !!user && user.role === 'platform_admin',
+        queryKey: ['tenants', user?.role],
+        queryFn: () =>
+            user?.role === 'platform_admin'
+                ? fetchJson<any[]>('/tenants/')
+                : fetchJson<any[]>('/tenants/public/list'),
+        enabled: !!user,
     });
 
     // Auto-select user's tenant or first available tenant; also fix stale localStorage values
@@ -300,7 +303,9 @@ export default function Layout() {
         // Notify other components about tenant change
         window.dispatchEvent(new StorageEvent('storage', { key: 'current_tenant_id', newValue: tenantId }));
     };
-    const currentTenantName = tenants.find((t: any) => t.id === currentTenant)?.name;
+    const currentTenantName = tenants.find(
+        (t: any) => t.id === (currentTenant || user?.tenant_id),
+    )?.name;
     const createCompany = async () => {
         if (!newCompanyName.trim()) return;
         const token = localStorage.getItem('token');

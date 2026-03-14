@@ -71,6 +71,8 @@ class AgentCreate(BaseModel):
     permission_scope_type: str = "company"  # company | user
     permission_scope_ids: list[uuid.UUID] = []
     permission_access_level: str = "use"  # use | manage
+    # Target tenant (admin-only override; otherwise ignored)
+    tenant_id: uuid.UUID | None = None
     # Template
     template_id: uuid.UUID | None = None
     # Autonomy

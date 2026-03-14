@@ -149,14 +149,19 @@ async def create_agent(
     from datetime import datetime, timedelta, timezone as tz
     expires_at = datetime.now(tz.utc) + timedelta(hours=current_user.quota_agent_ttl_hours or 48)
 
-    # Get default limits from tenant
+    # Determine target tenant: normally user's tenant; admins can override via payload
+    target_tenant_id = current_user.tenant_id
+    if current_user.role in ("platform_admin", "org_admin") and data.tenant_id:
+        target_tenant_id = data.tenant_id
+
+    # Get default limits from target tenant
     max_llm_calls = 100
     default_max_triggers = 20
     default_min_poll = 5
     default_webhook_rate = 5
-    if current_user.tenant_id:
+    if target_tenant_id:
         from app.models.tenant import Tenant
-        tenant_result = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
+        tenant_result = await db.execute(select(Tenant).where(Tenant.id == target_tenant_id))
         tenant = tenant_result.scalar_one_or_none()
         if tenant:
             max_llm_calls = tenant.default_max_llm_calls_per_day or 100
@@ -170,7 +175,7 @@ async def create_agent(
         bio=data.bio,
         avatar_url=data.avatar_url,
         creator_id=current_user.id,
-        tenant_id=current_user.tenant_id,
+        tenant_id=target_tenant_id,
         primary_model_id=data.primary_model_id,
         fallback_model_id=data.fallback_model_id,
         max_tokens_per_day=data.max_tokens_per_day,

@@ -12,6 +12,8 @@ export default function AgentCreate() {
     const queryClient = useQueryClient();
     const [step, setStep] = useState(0);
     const [error, setError] = useState('');
+    // Current company (tenant) selection from layout sidebar
+    const [currentTenant] = useState<string | null>(() => localStorage.getItem('current_tenant_id'));
 
     const [form, setForm] = useState({
         name: '',
@@ -96,6 +98,8 @@ export default function AgentCreate() {
             max_tokens_per_month: form.max_tokens_per_month ? Number(form.max_tokens_per_month) : undefined,
             skill_ids: form.skill_ids,
             permission_access_level: form.permission_access_level,
+            // For platform/org admins, backend will honor this tenant_id override
+            tenant_id: currentTenant || undefined,
         });
     };
 
