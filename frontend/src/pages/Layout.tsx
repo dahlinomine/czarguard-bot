@@ -446,8 +446,8 @@ export default function Layout() {
                         });
                         const myAgents = sortAgents(agents.filter((a: any) => a.created_by === user?.id).filter(filterAgent));
                         const sharedAgents = sortAgents(agents.filter((a: any) => a.created_by !== user?.id).filter(filterAgent));
-                        const renderAgent = (agent: any) => (
-                            <div key={agent.id} style={{ position: 'relative' }} className="sidebar-agent-item">
+                        const renderAgent = (agent: any, isOwned = false) => (
+                            <div key={agent.id} style={{ position: 'relative' }} className={`sidebar-agent-item${isOwned ? ' owned' : ''}`}>
                                 <NavLink
                                     to={`/agents/${agent.id}`}
                                     className={({ isActive }) => `sidebar-item ${isActive ? 'active' : ''}`}
@@ -474,8 +474,8 @@ export default function Layout() {
                         );
                         return (
                             <>
-                                {myAgents.length > 0 && myAgents.map(renderAgent)}
-                                {sharedAgents.length > 0 && sharedAgents.map(renderAgent)}
+                                {myAgents.length > 0 && myAgents.map(a => renderAgent(a, true))}
+                                {sharedAgents.length > 0 && sharedAgents.map(a => renderAgent(a, false))}
                                 {agents.length === 0 && (
                                     <div className="sidebar-section">
                                         <div className="sidebar-section-title">{t('nav.myAgents')}</div>

@@ -415,6 +415,11 @@ select:focus {
   position: relative;
 }
 
+.sidebar-agent-item.owned .sidebar-item {
+  border-left: 2px solid var(--accent-primary);
+  margin-left: 2px;
+}
+
 .sidebar-pin-btn {
   position: absolute;
   right: 8px;

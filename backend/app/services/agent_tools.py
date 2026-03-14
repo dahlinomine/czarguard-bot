@@ -2380,7 +2380,21 @@ async def _send_message_to_agent(from_agent_id: uuid.UUID, args: dict) -> str:
             if target.is_expired or (target.expires_at and datetime.now(timezone.utc) >= target.expires_at):
                 return f"⚠️ {target.name} is currently unavailable — their service period has ended. Please contact the platform administrator."
 
-            # Get Participant IDs for both agents
+            # ── OpenClaw target: queue message for gateway poll ──
+            if getattr(target, "agent_type", "native") == "openclaw":
+                from app.models.gateway_message import GatewayMessage as GMsg
+                gw_msg = GMsg(
+                    agent_id=target.id,
+                    sender_agent_id=from_agent_id,
+                    sender_user_id=source_agent.creator_id if source_agent else None,
+                    content=f"[From {source_name}] {message_text}",
+                    status="pending",
+                )
+                db.add(gw_msg)
+                await db.commit()
+                online = target.openclaw_last_seen and (datetime.now(timezone.utc) - target.openclaw_last_seen).total_seconds() < 300
+                status_hint = "online" if online else "offline (message will be delivered on next heartbeat)"
+                return f"✅ Message sent to {target.name} (OpenClaw agent, currently {status_hint}). The message has been queued and will be delivered when the agent polls for updates."
             src_part_r = await db.execute(select(Participant).where(Participant.type == "agent", Participant.ref_id == from_agent_id))
             src_participant = src_part_r.scalar_one_or_none()
             tgt_part_r = await db.execute(select(Participant).where(Participant.type == "agent", Participant.ref_id == target.id))

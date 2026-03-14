@@ -11,7 +11,10 @@ from app.database import Base
 
 
 class Agent(Base):
-    """Digital employee (Agent) instance."""
+    """Digital employee (Agent) instance.
+
+    agent_type: 'native' (platform-hosted) or 'openclaw' (remote OpenClaw bot).
+    """
 
     __tablename__ = "agents"
 
@@ -25,6 +28,13 @@ class Agent(Base):
     # Ownership
     creator_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     tenant_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id"))
+
+    # Agent type: 'native' (platform-hosted LLM) or 'openclaw' (remote OpenClaw bot)
+    agent_type: Mapped[str] = mapped_column(String(20), default="native", nullable=False)
+    # API key hash for OpenClaw gateway authentication
+    api_key_hash: Mapped[str | None] = mapped_column(String(128))
+    # Last time OpenClaw polled the gateway (online status indicator)
+    openclaw_last_seen: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     # Runtime
     status: Mapped[str] = mapped_column(

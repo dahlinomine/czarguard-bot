@@ -85,6 +85,7 @@ async def lifespan(app: FastAPI):
         import app.models.chat_session   # noqa
         import app.models.trigger        # noqa
         import app.models.notification   # noqa
+        import app.models.gateway_message # noqa
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
             # Add 'atlassian' to channel_type_enum if it doesn't exist yet (idempotent)
@@ -234,6 +235,7 @@ from app.api.triggers import router as triggers_router
 from app.api.atlassian import router as atlassian_router
 from app.api.webhooks import router as webhooks_router
 from app.api.notification import router as notification_router
+from app.api.gateway import router as gateway_router
 
 app.include_router(auth_router, prefix=settings.API_PREFIX)
 app.include_router(agents_router, prefix=settings.API_PREFIX)
@@ -265,6 +267,7 @@ app.include_router(plaza_router)
 app.include_router(notification_router, prefix=settings.API_PREFIX)
 app.include_router(webhooks_router)  # Public endpoint, no API prefix
 app.include_router(ws_router)
+app.include_router(gateway_router, prefix=settings.API_PREFIX)
 
 
 @app.get("/api/health", response_model=HealthResponse, tags=["health"])

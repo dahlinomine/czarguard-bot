@@ -57,6 +57,7 @@ class UserUpdate(BaseModel):
 
 class AgentCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
+    agent_type: str = "native"  # native | openclaw
     role_description: str = Field(default="", max_length=500)
     bio: str | None = None
     welcome_message: str | None = None
@@ -115,6 +116,8 @@ class AgentOut(BaseModel):
     is_expired: bool = False
     llm_calls_today: int = 0
     max_llm_calls_per_day: int = 100
+    agent_type: str = "native"
+    openclaw_last_seen: datetime | None = None
     created_at: datetime
     last_active_at: datetime | None = None
 
@@ -383,3 +386,22 @@ class PaginatedResponse(BaseModel):
 class HealthResponse(BaseModel):
     status: str = "ok"
     version: str
+
+
+# ─── Gateway (OpenClaw) ─────────────────────────────────
+
+class GatewayMessageOut(BaseModel):
+    id: uuid.UUID
+    sender_agent_name: str | None = None
+    sender_user_name: str | None = None
+    content: str
+    created_at: datetime
+
+
+class GatewayPollResponse(BaseModel):
+    messages: list[GatewayMessageOut] = []
+
+
+class GatewayReportRequest(BaseModel):
+    message_id: uuid.UUID
+    result: str = Field(min_length=1)
