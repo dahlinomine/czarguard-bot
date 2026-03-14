@@ -167,7 +167,7 @@ async def report_result(
 
     # Save result as assistant chat message and push via WebSocket
     if body.result and msg.conversation_id:
-        from app.models.chat_message import ChatMessage
+        from app.models.audit import ChatMessage
         assistant_msg = ChatMessage(
             agent_id=agent.id,
             role="assistant",
