@@ -1310,6 +1310,7 @@ export default function EnterpriseSettings() {
                                                                         })
                                                                     });
                                                                     loadAllTools();
+                                                                    setShowAddMCP(false); setMcpTestResult(null); setMcpForm({ server_url: '', server_name: '' }); setMcpRawInput('');
                                                                 }}>{t('enterprise.tools.importAll')}</button>
                                                             </div>
                                                         ))}
