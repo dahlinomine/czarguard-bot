@@ -275,49 +275,12 @@ async def process_feishu_event(agent_id: uuid.UUID, body: dict, db: AsyncSession
             _final_content = _extracted_text
             if _image_markers:
                 _final_content += "\n" + "\n".join(_image_markers)
-            
-            _display_content = _extracted_text
-            if _image_markers:
-                _display_content += f"\n[包含了 {len(_image_markers)} 张图片]"
-
             # Rewrite as text message so existing handler processes it
-            message["content"] = _json_post.dumps({"text": _final_content, "display_text": _display_content})
+            message["content"] = _json_post.dumps({"text": _final_content})
             msg_type = "text"
             print(f"[Feishu] Normalized post → text='{_extracted_text[:100]}', images={len(_image_markers)}")
 
-        if msg_type == "image":
-            import json as _j
-            import base64 as _b64
-            from pathlib import Path as _ImgP
-            from app.config import get_settings as _img_gs
-            
-            _img_content = _j.loads(message.get("content", "{}"))
-            _ik = _img_content.get("image_key", "")
-            if _ik:
-                _msg_id = message.get("message_id", "")
-                _up_dir = _ImgP(_img_gs().AGENT_DATA_DIR) / str(agent_id) / "workspace" / "uploads"
-                _up_dir.mkdir(parents=True, exist_ok=True)
-                try:
-                    _ibytes = await feishu_service.download_message_resource(
-                        config.app_id, config.app_secret, _msg_id, _ik, "image"
-                    )
-                    _save = _up_dir / f"image_{_ik[-8:]}.jpg"
-                    _save.write_bytes(_ibytes)
-                    
-                    _b64str = _b64.b64encode(_ibytes).decode("ascii")
-                    _marker = f"[image_data:data:image/jpeg;base64,{_b64str}]"
-                    message["content"] = _j.dumps({
-                        "text": f"[用户发送了图片，请看图片内容]\n{_marker}",
-                        "display_text": "[图片]"
-                    })
-                    msg_type = "text"
-                except Exception as _dl_e:
-                    print(f"[Feishu] Failed to download image {_ik}: {_dl_e}")
-                    msg_type = "file" # Fallback
-            else:
-                msg_type = "file" # Fallback
-
-        if msg_type == "file":
+        if msg_type in ("file", "image"):
             import asyncio as _asyncio
             _asyncio.create_task(_handle_feishu_file(db, agent_id, config, message, sender_open_id, chat_type, chat_id))
             return {"code": 0, "msg": "ok"}
@@ -327,16 +290,14 @@ async def process_feishu_event(agent_id: uuid.UUID, body: dict, db: AsyncSession
             import re
             content = json.loads(message.get("content", "{}"))
             user_text = content.get("text", "")
-            display_text = content.get("display_text", user_text)
 
             # Strip @mention tags (e.g. @_user_1) from group messages
             user_text = re.sub(r'@_user_\d+', '', user_text).strip()
-            display_text = re.sub(r'@_user_\d+', '', display_text).strip()
 
-            if not user_text and not display_text:
+            if not user_text:
                 return {"code": 0, "msg": "empty message after stripping mentions"}
 
-            print(f"[Feishu] User text: {display_text[:100]}")
+            print(f"[Feishu] User text: {user_text[:100]}")
 
             # Detect task creation intent
             task_match = re.search(
@@ -485,12 +446,12 @@ async def process_feishu_event(agent_id: uuid.UUID, body: dict, db: AsyncSession
                 user_id=platform_user_id,
                 external_conv_id=conv_id,
                 source_channel="feishu",
-                first_message_title=display_text,
+                first_message_title=user_text,
             )
             session_conv_id = str(_sess.id)
 
             # Save user message
-            db.add(ChatMessage(agent_id=agent_id, user_id=platform_user_id, role="user", content=display_text, conversation_id=session_conv_id))
+            db.add(ChatMessage(agent_id=agent_id, user_id=platform_user_id, role="user", content=user_text, conversation_id=session_conv_id))
             _sess.last_message_at = _dt.now(_tz.utc)
             await db.commit()
 
@@ -519,7 +480,7 @@ async def process_feishu_event(agent_id: uuid.UUID, body: dict, db: AsyncSession
                         reverse=True,
                     )
                     for _fp in _candidates:
-                        if _fp.is_file() and _fp.suffix.lower() not in ('.jpg', '.jpeg', '.png', '.gif') and (_now - _fp.stat().st_mtime) < 1800:  # 30 min
+                        if _fp.is_file() and (_now - _fp.stat().st_mtime) < 1800:  # 30 min
                             _recent_file_path = f"uploads/{_fp.name}"
                             break
                 if _recent_file_path:
@@ -853,17 +814,116 @@ async def _handle_feishu_file(db, agent_id, config, message, sender_open_id, cha
         )
         session_conv_id = str(_sess.id)
 
-        # Store user message as file path
-        user_msg_content = f"[file:{filename}]"
+        # Store user message — include base64 marker for images so LLM can see them
+        if msg_type == "image":
+            import base64 as _b64_img
+            _b64_data = _b64_img.b64encode(file_bytes).decode("ascii")
+            _image_marker = f"[image_data:data:image/jpeg;base64,{_b64_data}]"
+            user_msg_content = f"[用户发送了图片]\n{_image_marker}"
+        else:
+            user_msg_content = f"[file:{filename}]"
         db.add(ChatMessage(agent_id=agent_id, user_id=platform_user_id, role="user",
-                           content=user_msg_content, conversation_id=session_conv_id))
+                           content=user_msg_content if msg_type != "image" else f"[file:{filename}]",
+                           conversation_id=session_conv_id))
         _sess.last_message_at = _dt.now(_tz.utc)
+
+        # Load conversation history for LLM context
+        ctx_size = agent_obj.context_window_size if agent_obj else 100
+        _hist_r = await db.execute(
+            _select(ChatMessage)
+            .where(ChatMessage.agent_id == agent_id, ChatMessage.conversation_id == session_conv_id)
+            .order_by(ChatMessage.created_at.desc())
+            .limit(ctx_size)
+        )
+        _history = [{"role": m.role, "content": m.content} for m in reversed(_hist_r.scalars().all())]
+
         await db.commit()
 
-    # Wait 1-2s for "human feel" (outside db session)
+    # For images: call LLM so vision models can actually see the image
+    if msg_type == "image":
+        import time as _time_img
+        import json as _json_card_img
+
+        # Send initial loading card
+        _reply_to = chat_id if chat_type == "group" else sender_open_id
+        _rid_type = "chat_id" if chat_type == "group" else "open_id"
+        _agent_name = agent_obj.name if agent_obj else "AI"
+        _init_card = {
+            "config": {"update_multi": True},
+            "header": {"template": "blue", "title": {"content": "识别图片中...", "tag": "plain_text"}},
+            "elements": [{"tag": "markdown", "content": "..."}]
+        }
+        _patch_msg_id = None
+        try:
+            _init_resp = await feishu_service.send_message(
+                config.app_id, config.app_secret, _reply_to, "interactive",
+                _json_card_img.dumps(_init_card), receive_id_type=_rid_type
+            )
+            _patch_msg_id = _init_resp.get("data", {}).get("message_id")
+        except Exception as _e_init:
+            print(f"[Feishu] Failed to send init card for image: {_e_init}")
+
+        _img_stream_buf = []
+        _img_last_flush = _time_img.time()
+
+        async def _img_on_chunk(text):
+            nonlocal _img_last_flush
+            _img_stream_buf.append(text)
+            now = _time_img.time()
+            if _patch_msg_id and now - _img_last_flush >= 1.0:
+                _card = {
+                    "config": {"update_multi": True},
+                    "header": {"template": "blue", "title": {"content": _agent_name, "tag": "plain_text"}},
+                    "elements": [{"tag": "markdown", "content": "".join(_img_stream_buf) + "▌"}]
+                }
+                import asyncio as _aio_img
+                _aio_img.create_task(feishu_service.patch_message(
+                    config.app_id, config.app_secret, _patch_msg_id, _json_card_img.dumps(_card)
+                ))
+                _img_last_flush = now
+
+        # Call LLM with image marker — vision models will parse it
+        async with _async_session() as _db_img:
+            reply_text = await _call_agent_llm(
+                _db_img, agent_id, user_msg_content, history=_history,
+                user_id=platform_user_id, on_chunk=_img_on_chunk,
+            )
+
+        print(f"[Feishu] Image LLM reply: {reply_text[:100]}")
+
+        # Send final card or fallback text
+        if _patch_msg_id:
+            _final_card = {
+                "config": {"update_multi": True},
+                "header": {"template": "blue", "title": {"content": _agent_name, "tag": "plain_text"}},
+                "elements": [{"tag": "markdown", "content": reply_text or "..."}]
+            }
+            await feishu_service.patch_message(
+                config.app_id, config.app_secret, _patch_msg_id, _json_card_img.dumps(_final_card)
+            )
+        else:
+            try:
+                await feishu_service.send_message(
+                    config.app_id, config.app_secret, _reply_to, "text",
+                    json.dumps({"text": reply_text}), receive_id_type=_rid_type,
+                )
+            except Exception as _e_fb:
+                print(f"[Feishu] Failed to send image reply: {_e_fb}")
+
+        # Save assistant reply in DB
+        async with _async_session() as _db_save:
+            _db_save.add(ChatMessage(agent_id=agent_id, user_id=platform_user_id, role="assistant",
+                                     content=reply_text, conversation_id=session_conv_id))
+            await _db_save.commit()
+
+        # Log activity
+        from app.services.activity_logger import log_activity
+        await log_activity(agent_id, "chat_reply", f"回复了飞书图片消息: {reply_text[:80]}", detail={"channel": "feishu", "type": "image"})
+        return
+
+    # For non-image files: send simple ack as before
     await asyncio.sleep(random.uniform(1.0, 2.0))
 
-    # Send random ack via Feishu first
     ack = random.choice(_FILE_ACK_MESSAGES)
     try:
         if chat_type == "group" and chat_id:
