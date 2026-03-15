@@ -1700,7 +1700,7 @@ function AgentDetailInner() {
                         }
                         // OpenClaw agents: only show status, chat, activityLog, settings
                         if ((agent as any)?.agent_type === 'openclaw') {
-                            return ['status', 'chat', 'activityLog', 'settings'].includes(tab);
+                            return ['status', 'relationships', 'chat', 'activityLog', 'settings'].includes(tab);
                         }
                         return true;
                     }).map((tab) => (
