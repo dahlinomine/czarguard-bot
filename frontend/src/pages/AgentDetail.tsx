@@ -1446,6 +1446,47 @@ function AgentDetailInner() {
     const [teamsOpen, setTeamsOpen] = useState(false);
     const [feishuOpen, setFeishuOpen] = useState(false);
     const [atlassianOpen, setAtlassianOpen] = useState(false);
+    const [dingtalkOpen, setDingtalkOpen] = useState(false);
+    const [wecomOpen, setWecomOpen] = useState(false);
+
+    // ─── Channel config — DingTalk ───────────────────────
+    const [dingtalkForm, setDingtalkForm] = useState({ app_key: '', app_secret: '' });
+    const [dingtalkEditing, setDingtalkEditing] = useState(false);
+    const { data: dingtalkConfig } = useQuery({
+        queryKey: ['dingtalk-channel', id],
+        queryFn: () => fetchAuth<any>(`/agents/${id}/dingtalk-channel`).catch(() => null),
+        enabled: !!id && activeTab === 'settings',
+    });
+    const saveDingtalk = useMutation({
+        mutationFn: () => fetchAuth(`/agents/${id}/dingtalk-channel`, { method: 'POST', body: JSON.stringify(dingtalkForm) }),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['dingtalk-channel', id] }); setDingtalkForm({ app_key: '', app_secret: '' }); },
+    });
+    const deleteDingtalk = useMutation({
+        mutationFn: () => fetchAuth(`/agents/${id}/dingtalk-channel`, { method: 'DELETE' }),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['dingtalk-channel', id] }),
+    });
+
+    // ─── Channel config — WeCom ──────────────────────────
+    const [wecomForm, setWecomForm] = useState({ corp_id: '', wecom_agent_id: '', secret: '', token: '', encoding_aes_key: '' });
+    const [wecomEditing, setWecomEditing] = useState(false);
+    const { data: wecomConfig } = useQuery({
+        queryKey: ['wecom-channel', id],
+        queryFn: () => fetchAuth<any>(`/agents/${id}/wecom-channel`).catch(() => null),
+        enabled: !!id && activeTab === 'settings',
+    });
+    const { data: wecomWebhookData } = useQuery({
+        queryKey: ['wecom-webhook-url', id],
+        queryFn: () => fetchAuth<any>(`/agents/${id}/wecom-channel/webhook-url`),
+        enabled: !!id && activeTab === 'settings',
+    });
+    const saveWecom = useMutation({
+        mutationFn: () => fetchAuth(`/agents/${id}/wecom-channel`, { method: 'POST', body: JSON.stringify(wecomForm) }),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['wecom-channel', id] }); setWecomForm({ corp_id: '', wecom_agent_id: '', secret: '', token: '', encoding_aes_key: '' }); },
+    });
+    const deleteWecom = useMutation({
+        mutationFn: () => fetchAuth(`/agents/${id}/wecom-channel`, { method: 'DELETE' }),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['wecom-channel', id] }),
+    });
     // Shared password-field visibility map: key = field id, value = shown/hidden
     const [showPwds, setShowPwds] = useState<Record<string, boolean>>({});
     const togglePwd = (fieldId: string) => setShowPwds(p => ({ ...p, [fieldId]: !p[fieldId] }));
@@ -2793,6 +2834,8 @@ function AgentDetailInner() {
                                                 feishu: t('common.channels.feishu'),
                                                 discord: t('common.channels.discord'),
                                                 slack: t('common.channels.slack'),
+                                                dingtalk: t('common.channels.dingtalk'),
+                                                wecom: t('common.channels.wecom'),
                                             };
                                             const chLabel = channelLabel[s.source_channel];
                                             return (
@@ -2846,12 +2889,16 @@ function AgentDetailInner() {
                                                                     feishu: t('common.channels.feishu'),
                                                                     discord: t('common.channels.discord'),
                                                                     slack: t('common.channels.slack'),
+                                                                    dingtalk: t('common.channels.dingtalk'),
+                                                                    wecom: t('common.channels.wecom'),
                                                                 } as Record<string, string>)[s.source_channel] && (
                                                                         <span style={{ fontSize: '9px', padding: '1px 4px', borderRadius: '3px', background: 'var(--bg-tertiary)', color: 'var(--text-tertiary)', flexShrink: 0 }}>
                                                                             {({
                                                                                 feishu: t('common.channels.feishu'),
                                                                                 discord: t('common.channels.discord'),
                                                                                 slack: t('common.channels.slack'),
+                                                                                dingtalk: t('common.channels.dingtalk'),
+                                                                                wecom: t('common.channels.wecom'),
                                                                             } as Record<string, string>)[s.source_channel]}
                                                                         </span>
                                                                     )}
@@ -4253,6 +4300,163 @@ function AgentDetailInner() {
                                         </div>)}
                                     </div>
 
+
+                                    {/* DingTalk */}
+                                    <div style={{ border: '1px solid var(--border-subtle)', borderRadius: '8px', overflow: 'hidden', marginBottom: '12px' }}>
+                                        <div onClick={() => setDingtalkOpen(!dingtalkOpen)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', cursor: 'pointer', transition: 'background 0.15s' }} onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#0089FF"/><path d="M16.7 10.3c-.2-.7-1.1-1.2-1.7-.8l-2.5 1.8c-.3.2-.1.7.3.6l1.2-.2s-2 2.5-4.3 3.5c0 0 1.3.4 2.8-.1 1.5-.5 3.1-1.8 3.1-1.8l-.3 1.1c-.1.3.2.5.4.3l2-2c.5-.5.3-1.3-.1-1.7l-1-.7z" fill="white"/></svg>
+                                                <div>
+                                                    <div style={{ fontWeight: 600, fontSize: '14px' }}>{t('common.channels.dingtalk')}</div>
+                                                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>Stream Mode</div>
+                                                </div>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                {dingtalkConfig && <span className={`badge ${dingtalkConfig.is_configured ? 'badge-success' : 'badge-warning'}`}>{dingtalkConfig.is_configured ? t('agent.settings.channel.configured') : t('agent.settings.channel.notConfigured')}</span>}
+                                                <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', transition: 'transform 0.2s', transform: dingtalkOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>&#9660;</span>
+                                            </div>
+                                        </div>
+                                        {dingtalkOpen && (<div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border-subtle)' }}>
+                                            {!canManage ? (
+                                                <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', fontStyle: 'italic', padding: '12px', background: 'var(--bg-secondary)', borderRadius: '6px' }}>
+                                                    Only the creator or admin can configure communication channels.
+                                                </div>
+                                            ) : dingtalkConfig?.is_configured && !dingtalkEditing ? (
+                                                <div>
+                                                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginBottom: '8px', padding: '8px 10px', background: 'var(--bg-secondary)', borderRadius: '6px' }}>
+                                                        Stream mode active. No webhook URL needed.
+                                                    </div>
+                                                    <details style={{ marginBottom: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                                        <summary style={{ cursor: 'pointer', fontWeight: 500, color: 'var(--text-primary)', userSelect: 'none', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                            <span style={{ fontSize: '10px' }}>&#9654;</span> {t('channelGuide.setupGuide')}
+                                                        </summary>
+                                                        <ol style={{ paddingLeft: '16px', margin: '8px 0', lineHeight: 1.9 }}>
+                                                            <li>{t('channelGuide.dingtalk.step1')}</li>
+                                                            <li>{t('channelGuide.dingtalk.step2')}</li>
+                                                            <li>{t('channelGuide.dingtalk.step3')}</li>
+                                                            <li>{t('channelGuide.dingtalk.step4')}</li>
+                                                            <li>{t('channelGuide.dingtalk.step5')}</li>
+                                                            <li>{t('channelGuide.dingtalk.step6')}</li>
+                                                        </ol>
+                                                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', background: 'var(--bg-secondary)', padding: '6px 10px', borderRadius: '6px' }}>{t('channelGuide.dingtalk.note')}</div>
+                                                    </details>
+                                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                                        <button className="btn btn-secondary" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => { setDingtalkForm({ app_key: dingtalkConfig?.app_id || '', app_secret: dingtalkConfig?.app_secret || '' }); setDingtalkEditing(true); }}>Edit</button>
+                                                        <button className="btn btn-danger" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => deleteDingtalk.mutate()}>Disconnect</button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div>
+                                                    <details style={{ marginBottom: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                                        <summary style={{ cursor: 'pointer', fontWeight: 500, color: 'var(--text-primary)', userSelect: 'none', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                            <span style={{ fontSize: '10px' }}>&#9654;</span> {t('channelGuide.setupGuide')}
+                                                        </summary>
+                                                        <ol style={{ paddingLeft: '16px', margin: '8px 0', lineHeight: 1.9 }}>
+                                                            <li>{t('channelGuide.dingtalk.step1')}</li>
+                                                            <li>{t('channelGuide.dingtalk.step2')}</li>
+                                                            <li>{t('channelGuide.dingtalk.step3')}</li>
+                                                            <li>{t('channelGuide.dingtalk.step4')}</li>
+                                                            <li>{t('channelGuide.dingtalk.step5')}</li>
+                                                            <li>{t('channelGuide.dingtalk.step6')}</li>
+                                                        </ol>
+                                                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', background: 'var(--bg-secondary)', padding: '6px 10px', borderRadius: '6px' }}>{t('channelGuide.dingtalk.note')}</div>
+                                                    </details>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+                                                        <input className="input" placeholder="AppKey" type={showPwds['dt_key'] ? 'text' : 'password'} value={dingtalkForm.app_key} onChange={e => setDingtalkForm(f => ({ ...f, app_key: e.target.value }))} style={{ fontSize: '12px' }} />
+                                                        <input className="input" placeholder="AppSecret" type={showPwds['dt_secret'] ? 'text' : 'password'} value={dingtalkForm.app_secret} onChange={e => setDingtalkForm(f => ({ ...f, app_secret: e.target.value }))} style={{ fontSize: '12px' }} />
+                                                    </div>
+                                                    <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                                                        <button className="btn btn-primary" style={{ fontSize: '12px', alignSelf: 'flex-start' }} onClick={() => { saveDingtalk.mutate(); setDingtalkEditing(false); }} disabled={!dingtalkForm.app_key || !dingtalkForm.app_secret || saveDingtalk.isPending}>
+                                                            {saveDingtalk.isPending ? t('common.loading') : (dingtalkEditing ? 'Save Changes' : t('agent.settings.channel.saveChannel'))}
+                                                        </button>
+                                                        {dingtalkEditing && <button className="btn btn-secondary" style={{ fontSize: '12px' }} onClick={() => setDingtalkEditing(false)}>Cancel</button>}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>)}
+                                    </div>
+
+                                    {/* WeCom */}
+                                    <div style={{ border: '1px solid var(--border-subtle)', borderRadius: '8px', overflow: 'hidden', marginBottom: '12px' }}>
+                                        <div onClick={() => setWecomOpen(!wecomOpen)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', cursor: 'pointer', transition: 'background 0.15s' }} onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#07C160"/><path d="M7.5 9.5a1 1 0 110-2 1 1 0 010 2zm4 0a1 1 0 110-2 1 1 0 010 2zm4 0a1 1 0 110-2 1 1 0 010 2zM6 13h5l2 3h-3l-1 2-1-2H6v-3z" fill="white"/></svg>
+                                                <div>
+                                                    <div style={{ fontWeight: 600, fontSize: '14px' }}>{t('common.channels.wecom')}</div>
+                                                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>Webhook</div>
+                                                </div>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                {wecomConfig && <span className={`badge ${wecomConfig.is_configured ? 'badge-success' : 'badge-warning'}`}>{wecomConfig.is_configured ? t('agent.settings.channel.configured') : t('agent.settings.channel.notConfigured')}</span>}
+                                                <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', transition: 'transform 0.2s', transform: wecomOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>&#9660;</span>
+                                            </div>
+                                        </div>
+                                        {wecomOpen && (<div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border-subtle)' }}>
+                                            {!canManage ? (
+                                                <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', fontStyle: 'italic', padding: '12px', background: 'var(--bg-secondary)', borderRadius: '6px' }}>
+                                                    Only the creator or admin can configure communication channels.
+                                                </div>
+                                            ) : wecomConfig?.is_configured && !wecomEditing ? (
+                                                <div>
+                                                    <div style={{ background: 'var(--bg-secondary)', borderRadius: '6px', padding: '10px', fontSize: '12px', fontFamily: 'var(--font-mono)', marginBottom: '12px' }}>
+                                                        <div style={{ color: 'var(--text-tertiary)', marginBottom: '6px' }}>Webhook URL</div>
+                                                        <div style={{ lineHeight: 1.6, wordBreak: 'break-all' }}>
+                                                            <span style={{ color: 'var(--accent-primary)' }}>{wecomWebhookData?.webhook_url || `${window.location.origin}/api/channel/wecom/${id}/webhook`}</span>
+                                                            <CopyBtn url={wecomWebhookData?.webhook_url || `${window.location.origin}/api/channel/wecom/${id}/webhook`} />
+                                                        </div>
+                                                    </div>
+                                                    <details style={{ marginBottom: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                                        <summary style={{ cursor: 'pointer', fontWeight: 500, color: 'var(--text-primary)', userSelect: 'none', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                            <span style={{ fontSize: '10px' }}>&#9654;</span> {t('channelGuide.setupGuide')}
+                                                        </summary>
+                                                        <ol style={{ paddingLeft: '16px', margin: '8px 0', lineHeight: 1.9 }}>
+                                                            <li>{t('channelGuide.wecom.step1')}</li>
+                                                            <li>{t('channelGuide.wecom.step2')}</li>
+                                                            <li>{t('channelGuide.wecom.step3')}</li>
+                                                            <li>{t('channelGuide.wecom.step4')}</li>
+                                                            <li>{t('channelGuide.wecom.step5')}</li>
+                                                            <li>{t('channelGuide.wecom.step6')}</li>
+                                                        </ol>
+                                                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', background: 'var(--bg-secondary)', padding: '6px 10px', borderRadius: '6px' }}>{t('channelGuide.wecom.note')}</div>
+                                                    </details>
+                                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                                        <button className="btn btn-secondary" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => { setWecomForm({ corp_id: wecomConfig?.app_id || '', wecom_agent_id: wecomConfig?.extra_config?.wecom_agent_id || '', secret: wecomConfig?.app_secret || '', token: wecomConfig?.verification_token || '', encoding_aes_key: wecomConfig?.encrypt_key || '' }); setWecomEditing(true); }}>Edit</button>
+                                                        <button className="btn btn-danger" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => deleteWecom.mutate()}>Disconnect</button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div>
+                                                    <details style={{ marginBottom: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                                        <summary style={{ cursor: 'pointer', fontWeight: 500, color: 'var(--text-primary)', userSelect: 'none', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                            <span style={{ fontSize: '10px' }}>&#9654;</span> {t('channelGuide.setupGuide')}
+                                                        </summary>
+                                                        <ol style={{ paddingLeft: '16px', margin: '8px 0', lineHeight: 1.9 }}>
+                                                            <li>{t('channelGuide.wecom.step1')}</li>
+                                                            <li>{t('channelGuide.wecom.step2')}</li>
+                                                            <li>{t('channelGuide.wecom.step3')}</li>
+                                                            <li>{t('channelGuide.wecom.step4')}</li>
+                                                            <li>{t('channelGuide.wecom.step5')}</li>
+                                                            <li>{t('channelGuide.wecom.step6')}</li>
+                                                        </ol>
+                                                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', background: 'var(--bg-secondary)', padding: '6px 10px', borderRadius: '6px' }}>{t('channelGuide.wecom.note')}</div>
+                                                    </details>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+                                                        <input className="input" placeholder="CorpID" value={wecomForm.corp_id} onChange={e => setWecomForm(f => ({ ...f, corp_id: e.target.value }))} style={{ fontSize: '12px' }} />
+                                                        <input className="input" placeholder="AgentID" value={wecomForm.wecom_agent_id} onChange={e => setWecomForm(f => ({ ...f, wecom_agent_id: e.target.value }))} style={{ fontSize: '12px' }} />
+                                                        <input className="input" placeholder="Secret" type={showPwds['wc_secret'] ? 'text' : 'password'} value={wecomForm.secret} onChange={e => setWecomForm(f => ({ ...f, secret: e.target.value }))} style={{ fontSize: '12px' }} />
+                                                        <input className="input" placeholder="Token" value={wecomForm.token} onChange={e => setWecomForm(f => ({ ...f, token: e.target.value }))} style={{ fontSize: '12px' }} />
+                                                        <input className="input" placeholder="EncodingAESKey" value={wecomForm.encoding_aes_key} onChange={e => setWecomForm(f => ({ ...f, encoding_aes_key: e.target.value }))} style={{ fontSize: '12px' }} />
+                                                    </div>
+                                                    <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                                                        <button className="btn btn-primary" style={{ fontSize: '12px', alignSelf: 'flex-start' }} onClick={() => { saveWecom.mutate(); setWecomEditing(false); }} disabled={!wecomForm.corp_id || !wecomForm.secret || !wecomForm.token || !wecomForm.encoding_aes_key || saveWecom.isPending}>
+                                                            {saveWecom.isPending ? t('common.loading') : (wecomEditing ? 'Save Changes' : t('agent.settings.channel.saveChannel'))}
+                                                        </button>
+                                                        {wecomEditing && <button className="btn btn-secondary" style={{ fontSize: '12px' }} onClick={() => setWecomEditing(false)}>Cancel</button>}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>)}
+                                    </div>
 
                                     {/* Feishu */}
                                     <div style={{ border: '1px solid var(--border-subtle)', borderRadius: '8px', overflow: 'hidden', marginBottom: '12px' }}>

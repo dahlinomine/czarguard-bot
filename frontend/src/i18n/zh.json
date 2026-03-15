@@ -593,7 +593,9 @@
       "feishu": "飞书",
       "discord": "Discord",
       "slack": "Slack",
-      "teams": "Microsoft Teams"
+      "teams": "Microsoft Teams",
+      "dingtalk": "钉钉",
+      "wecom": "企业微信"
     }
   },
   "openclaw": {
@@ -651,6 +653,24 @@
       "tenantId": "租户 ID（目录 ID）",
       "tenantIdPlaceholder": "请输入此单租户应用的租户 ID（目录 ID）",
       "tenantIdHint": "单租户应用必填，请在 Azure AD → 应用注册 → 你的应用 → 概述 中复制目录（租户）ID。"
+    },
+    "dingtalk": {
+      "step1": "打开 open.dingtalk.com → 登录 → 进入应用开发 → 创建企业内部应用 → 填写名称",
+      "step2": "在应用页面 → 添加应用能力 → 找到「机器人」 → 点击添加",
+      "step3": "在应用信息页面 → 复制 AppKey 和 AppSecret",
+      "step4": "消息接收模式选择 Stream 模式（推荐，无需公网 IP）",
+      "step5": "将 AppKey 和 AppSecret 填入上方 → 点击保存配置",
+      "step6": "发布应用 → 在钉钉中找到机器人，发送消息测试",
+      "note": "Stream 模式无需公网 IP 和回调地址，只需 AppKey 和 AppSecret 即可连接。"
+    },
+    "wecom": {
+      "step1": "登录 work.weixin.qq.com → 应用管理 → 自建应用 → 创建应用",
+      "step2": "在应用详情页 → 复制 CorpID（企业ID）、AgentID（应用ID）和 Secret",
+      "step3": "设置 API 接收消息 → 设置 Token 和 EncodingAESKey（可自动生成）",
+      "step4": "将上述信息填入上方 → 点击保存配置 → 复制出现的 Webhook URL",
+      "step5": "将 Webhook URL 粘贴到企业微信「API 接收消息」的 URL 框中 → 保存",
+      "step6": "在企业微信中找到应用，发送消息测试",
+      "note": "回调 URL 必须公网可访问，企微会验证 URL 并推送加密消息。"
     }
   }
 }

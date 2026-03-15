@@ -61,6 +61,7 @@ async def lifespan(app: FastAPI):
     from app.services.tool_seeder import seed_builtin_tools
     from app.services.template_seeder import seed_agent_templates
     from app.services.feishu_ws import feishu_ws_manager
+    from app.services.dingtalk_stream import dingtalk_stream_manager
 
     # ── Step 0: Ensure all DB tables exist (idempotent, safe to run on every startup) ──
     try:
@@ -169,6 +170,7 @@ async def lifespan(app: FastAPI):
         for name, coro in [
             ("trigger_daemon", start_trigger_daemon()),
             ("feishu_ws", feishu_ws_manager.start_all()),
+            ("dingtalk_stream", dingtalk_stream_manager.start_all()),
         ]:
             task = asyncio.create_task(coro, name=name)
             task.add_done_callback(_bg_task_error)
@@ -229,6 +231,8 @@ from app.api.users import router as users_router
 from app.api.chat_sessions import router as chat_sessions_router
 from app.api.slack import router as slack_router
 from app.api.discord_bot import router as discord_router
+from app.api.dingtalk import router as dingtalk_router
+from app.api.wecom import router as wecom_router
 from app.api.teams import router as teams_router
 from app.api.triggers import router as triggers_router
 
@@ -258,6 +262,8 @@ app.include_router(skills_router, prefix=settings.API_PREFIX)
 app.include_router(users_router, prefix=settings.API_PREFIX)
 app.include_router(slack_router, prefix=settings.API_PREFIX)
 app.include_router(discord_router, prefix=settings.API_PREFIX)
+app.include_router(dingtalk_router, prefix=settings.API_PREFIX)
+app.include_router(wecom_router, prefix=settings.API_PREFIX)
 app.include_router(teams_router, prefix=settings.API_PREFIX)
 
 app.include_router(atlassian_router, prefix=settings.API_PREFIX)

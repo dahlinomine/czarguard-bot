@@ -580,7 +580,9 @@
       "feishu": "Feishu",
       "discord": "Discord",
       "slack": "Slack",
-      "teams": "Microsoft Teams"
+      "teams": "Microsoft Teams",
+      "dingtalk": "DingTalk",
+      "wecom": "WeCom"
     }
   },
   "openclaw": {
@@ -638,6 +640,24 @@
       "tenantId": "Tenant ID (Directory ID)",
       "tenantIdPlaceholder": "Enter your tenant ID (Directory ID) for this single-tenant app",
       "tenantIdHint": "Required for single-tenant apps. Get it from Azure AD → App registrations → your app → Overview."
+    },
+    "dingtalk": {
+      "step1": "Go to open.dingtalk.com → log in → go to App Development → Create Internal App → enter a name",
+      "step2": "In the app page → Add Capabilities → find Bot → click Add",
+      "step3": "In the app info page → copy AppKey and AppSecret",
+      "step4": "Set message receiving mode to Stream (recommended, no public IP needed)",
+      "step5": "Paste AppKey and AppSecret above → click Save Config",
+      "step6": "Publish the app → find the bot in DingTalk and send a test message",
+      "note": "Stream mode requires no public IP or callback URL. Only AppKey and AppSecret are needed."
+    },
+    "wecom": {
+      "step1": "Log in to work.weixin.qq.com → App Management → Self-Built Apps → Create App",
+      "step2": "In the app details page → copy CorpID, AgentID, and Secret",
+      "step3": "Set up API message receiving → set Token and EncodingAESKey (can be auto-generated)",
+      "step4": "Fill in the info above → click Save Config → copy the Webhook URL that appears",
+      "step5": "Paste the Webhook URL into WeCom's API Receive Message URL field → Save",
+      "step6": "Find the app in WeCom and send a test message",
+      "note": "The callback URL must be publicly accessible. WeCom will verify the URL and send encrypted messages."
     }
   }
 }
