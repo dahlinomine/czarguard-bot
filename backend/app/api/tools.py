@@ -257,18 +257,26 @@ async def test_mcp_connection(
 
 @router.get("/agent-installed")
 async def list_agent_installed_tools(
+    tenant_id: str | None = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Admin endpoint: list all user-installed (per-agent) tools with source agent info."""
+    """Admin endpoint: list user-installed tools scoped by tenant."""
     from app.models.agent import Agent
-    result = await db.execute(
+    query = (
         select(AgentTool, Tool, Agent)
         .join(Tool, AgentTool.tool_id == Tool.id)
         .outerjoin(Agent, AgentTool.installed_by_agent_id == Agent.id)
         .where(AgentTool.source == "user_installed")
         .order_by(AgentTool.created_at.desc())
     )
+    # Scope by tenant: only show tools installed by agents in this tenant
+    tid = tenant_id or (str(current_user.tenant_id) if current_user.tenant_id else None)
+    if tid:
+        from app.models.agent import Agent as Ag
+        tenant_agent_ids = select(Ag.id).where(Ag.tenant_id == tid)
+        query = query.where(AgentTool.agent_id.in_(tenant_agent_ids))
+    result = await db.execute(query)
     rows = result.all()
     return [
         {

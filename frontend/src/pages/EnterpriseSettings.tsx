@@ -690,7 +690,8 @@ export default function EnterpriseSettings() {
     };
     const loadAgentInstalledTools = async () => {
         try {
-            const data = await fetchJson<any[]>('/tools/agent-installed');
+            const tid = selectedTenantId;
+            const data = await fetchJson<any[]>(`/tools/agent-installed${tid ? `?tenant_id=${tid}` : ''}`);
             setAgentInstalledTools(data);
         } catch { }
     };
