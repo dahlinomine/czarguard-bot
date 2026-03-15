@@ -4166,20 +4166,6 @@ function AgentDetailInner() {
                                                 </div>
                                             ) : (
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                                    <div>
-                                                        <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Bot Token *</label>
-                                                        <div style={{ position: 'relative' }}>
-                                                            <input className="input" type={showPwds['slack_token'] ? 'text' : 'password'} value={slackForm.bot_token} onChange={e => setSlackForm({ ...slackForm, bot_token: e.target.value })} placeholder="xoxb-..." style={{ fontSize: '12px', paddingRight: '36px', width: '100%' }} />
-                                                            <button type="button" onClick={() => togglePwd('slack_token')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '2px', display: 'flex', alignItems: 'center' }}>{showPwds['slack_token'] ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>}</button>
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Signing Secret *</label>
-                                                        <div style={{ position: 'relative' }}>
-                                                            <input className="input" type={showPwds['slack_secret'] ? 'text' : 'password'} value={slackForm.signing_secret} onChange={e => setSlackForm({ ...slackForm, signing_secret: e.target.value })} style={{ fontSize: '12px', paddingRight: '36px', width: '100%' }} />
-                                                            <button type="button" onClick={() => togglePwd('slack_secret')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '2px', display: 'flex', alignItems: 'center' }}>{showPwds['slack_secret'] ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>}</button>
-                                                        </div>
-                                                    </div>
                                                     <details style={{ marginBottom: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
                                                         <summary style={{ cursor: 'pointer', fontWeight: 500, color: 'var(--text-primary)', userSelect: 'none', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                             <span style={{ fontSize: '10px' }}>▶</span> {t('channelGuide.setupGuide')}
@@ -4196,6 +4182,20 @@ function AgentDetailInner() {
                                                         </ol>
                                                         <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', background: 'var(--bg-secondary)', padding: '6px 10px', borderRadius: '6px' }}>💡 {t('channelGuide.slack.note')}</div>
                                                     </details>
+                                                    <div>
+                                                        <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Bot Token *</label>
+                                                        <div style={{ position: 'relative' }}>
+                                                            <input className="input" type={showPwds['slack_token'] ? 'text' : 'password'} value={slackForm.bot_token} onChange={e => setSlackForm({ ...slackForm, bot_token: e.target.value })} placeholder="xoxb-..." style={{ fontSize: '12px', paddingRight: '36px', width: '100%' }} />
+                                                            <button type="button" onClick={() => togglePwd('slack_token')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '2px', display: 'flex', alignItems: 'center' }}>{showPwds['slack_token'] ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>}</button>
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Signing Secret *</label>
+                                                        <div style={{ position: 'relative' }}>
+                                                            <input className="input" type={showPwds['slack_secret'] ? 'text' : 'password'} value={slackForm.signing_secret} onChange={e => setSlackForm({ ...slackForm, signing_secret: e.target.value })} style={{ fontSize: '12px', paddingRight: '36px', width: '100%' }} />
+                                                            <button type="button" onClick={() => togglePwd('slack_secret')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '2px', display: 'flex', alignItems: 'center' }}>{showPwds['slack_secret'] ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>}</button>
+                                                        </div>
+                                                    </div>
                                                     <div style={{ display: 'flex', gap: '8px' }}>
                                                         <button className="btn btn-primary" style={{ fontSize: '12px', alignSelf: 'flex-start' }} onClick={() => { saveSlack.mutate(); setSlackEditing(false); }} disabled={!slackForm.bot_token || !slackForm.signing_secret || saveSlack.isPending}>
                                                             {saveSlack.isPending ? t('common.loading') : (slackEditing ? 'Save Changes' : t('agent.settings.channel.saveChannel'))}
@@ -4259,21 +4259,6 @@ function AgentDetailInner() {
                                                 </div>
                                             ) : (
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                                    <div>
-                                                        <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Application ID *</label>
-                                                        <input className="input" value={discordForm.application_id} onChange={e => setDiscordForm({ ...discordForm, application_id: e.target.value })} placeholder="1234567890" style={{ fontSize: '12px' }} />
-                                                    </div>
-                                                    <div>
-                                                        <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Bot Token *</label>
-                                                        <div style={{ position: 'relative' }}>
-                                                            <input className="input" type={showPwds['disc_token'] ? 'text' : 'password'} value={discordForm.bot_token} onChange={e => setDiscordForm({ ...discordForm, bot_token: e.target.value })} style={{ fontSize: '12px', paddingRight: '36px', width: '100%' }} />
-                                                            <button type="button" onClick={() => togglePwd('disc_token')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '2px', display: 'flex', alignItems: 'center' }}>{showPwds['disc_token'] ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>}</button>
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Public Key *</label>
-                                                        <input className="input" value={discordForm.public_key} onChange={e => setDiscordForm({ ...discordForm, public_key: e.target.value })} style={{ fontSize: '12px' }} />
-                                                    </div>
                                                     <details style={{ marginBottom: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
                                                         <summary style={{ cursor: 'pointer', fontWeight: 500, color: 'var(--text-primary)', userSelect: 'none', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                             <span style={{ fontSize: '10px' }}>▶</span> {t('channelGuide.setupGuide')}
@@ -4289,6 +4274,21 @@ function AgentDetailInner() {
                                                         </ol>
                                                         <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', background: 'var(--bg-secondary)', padding: '6px 10px', borderRadius: '6px' }}>💡 {t('channelGuide.discord.note')}</div>
                                                     </details>
+                                                    <div>
+                                                        <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Application ID *</label>
+                                                        <input className="input" value={discordForm.application_id} onChange={e => setDiscordForm({ ...discordForm, application_id: e.target.value })} placeholder="1234567890" style={{ fontSize: '12px' }} />
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Bot Token *</label>
+                                                        <div style={{ position: 'relative' }}>
+                                                            <input className="input" type={showPwds['disc_token'] ? 'text' : 'password'} value={discordForm.bot_token} onChange={e => setDiscordForm({ ...discordForm, bot_token: e.target.value })} style={{ fontSize: '12px', paddingRight: '36px', width: '100%' }} />
+                                                            <button type="button" onClick={() => togglePwd('disc_token')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '2px', display: 'flex', alignItems: 'center' }}>{showPwds['disc_token'] ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>}</button>
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Public Key *</label>
+                                                        <input className="input" value={discordForm.public_key} onChange={e => setDiscordForm({ ...discordForm, public_key: e.target.value })} style={{ fontSize: '12px' }} />
+                                                    </div>
                                                     <div style={{ display: 'flex', gap: '8px' }}>
                                                         <button className="btn btn-primary" style={{ fontSize: '12px', alignSelf: 'flex-start' }} onClick={() => { saveDiscord.mutate(); setDiscordEditing(false); }} disabled={!discordForm.application_id || !discordForm.bot_token || !discordForm.public_key || saveDiscord.isPending}>
                                                             {saveDiscord.isPending ? t('common.loading') : (discordEditing ? 'Save Changes' : t('agent.settings.channel.saveChannel'))}
@@ -4362,6 +4362,19 @@ function AgentDetailInner() {
                                                 </div>
                                             ) : (
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                    <details style={{ marginBottom: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                                        <summary style={{ cursor: 'pointer', fontWeight: 500, color: 'var(--text-primary)', userSelect: 'none', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                            <span style={{ fontSize: '10px' }}>▶</span> {t('channelGuide.setupGuide')}
+                                                        </summary>
+                                                        <ol style={{ paddingLeft: '16px', margin: '8px 0', lineHeight: 1.9 }}>
+                                                            <li>{t('channelGuide.teams.step1')}</li>
+                                                            <li>{t('channelGuide.teams.step2')}</li>
+                                                            <li>{t('channelGuide.teams.step3')}</li>
+                                                            <li>{t('channelGuide.teams.step4')}</li>
+                                                            <li>{t('channelGuide.teams.step5')}</li>
+                                                        </ol>
+                                                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', background: 'var(--bg-secondary)', padding: '6px 10px', borderRadius: '6px' }}>💡 {t('channelGuide.teams.note')}</div>
+                                                    </details>
                                                     <div>
                                                         <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>App ID (Client ID) *</label>
                                                         <input className="input" value={teamsForm.app_id} onChange={e => setTeamsForm({ ...teamsForm, app_id: e.target.value })} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" style={{ fontSize: '12px' }} />
@@ -4378,20 +4391,6 @@ function AgentDetailInner() {
                                                         <input className="input" value={teamsForm.tenant_id} onChange={e => setTeamsForm({ ...teamsForm, tenant_id: e.target.value })} placeholder={t('channelGuide.teams.tenantIdPlaceholder')} style={{ fontSize: '12px' }} />
                                                         <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>{t('channelGuide.teams.tenantIdHint')}</div>
                                                     </div>
-                                                    <details style={{ marginBottom: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                                                        <summary style={{ cursor: 'pointer', fontWeight: 500, color: 'var(--text-primary)', userSelect: 'none', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                            <span style={{ fontSize: '10px' }}>▶</span> {t('channelGuide.setupGuide')}
-                                                        </summary>
-                                                        <ol style={{ paddingLeft: '16px', margin: '8px 0', lineHeight: 1.9 }}>
-                                                            <li>{t('channelGuide.teams.step1')}</li>
-                                                            <li>{t('channelGuide.teams.step2')}</li>
-                                                            <li>{t('channelGuide.teams.step3')}</li>
-                                                            <li>{t('channelGuide.teams.step4')}</li>
-                                                            <li>{t('channelGuide.teams.step5')}</li>
-                                                            <li>{t('channelGuide.teams.step6')}</li>
-                                                        </ol>
-                                                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', background: 'var(--bg-secondary)', padding: '6px 10px', borderRadius: '6px' }}>💡 {t('channelGuide.teams.note')}</div>
-                                                    </details>
                                                     <div style={{ display: 'flex', gap: '8px' }}>
                                                         <button className="btn btn-primary" style={{ fontSize: '12px', alignSelf: 'flex-start' }} onClick={() => { saveTeams.mutate(); setTeamsEditing(false); }} disabled={(!teamsForm.app_id || !teamsForm.app_secret) || saveTeams.isPending}>
                                                             {saveTeams.isPending ? t('common.loading') : (teamsEditing ? 'Save Changes' : t('agent.settings.channel.saveChannel'))}
