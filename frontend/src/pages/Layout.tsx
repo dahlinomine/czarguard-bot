@@ -321,6 +321,29 @@ export default function Layout() {
         setShowNewCompany(false);
         queryClient.invalidateQueries({ queryKey: ['tenants'] });
     };
+    const deleteCompany = async (tenantId: string, tenantName: string) => {
+        if (!confirm(t('layout.deleteCompanyConfirm', { name: tenantName }) || `Delete "${tenantName}" and all its data? This cannot be undone.`)) return;
+        const token = localStorage.getItem('token');
+        try {
+            const res = await fetch(`/api/tenants/${tenantId}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({ detail: 'Delete failed' }));
+                alert(err.detail || 'Delete failed');
+                return;
+            }
+            const data = await res.json();
+            // If we deleted the currently selected company, switch to fallback
+            if (currentTenant === tenantId) {
+                switchTenant(data.fallback_tenant_id);
+            }
+            queryClient.invalidateQueries({ queryKey: ['tenants'] });
+        } catch (e: any) {
+            alert(e.message || 'Delete failed');
+        }
+    };
 
     return (
         <div className="app-layout">
@@ -348,6 +371,28 @@ export default function Layout() {
                                     <option key={t.id} value={t.id}>{t.name}</option>
                                 ))}
                             </select>
+                            {tenants.length > 1 && (
+                                <div style={{ marginTop: '4px', display: 'flex', flexWrap: 'wrap', gap: '2px' }}>
+                                    {tenants.filter((t: any) => t.id !== currentTenant).map((t: any) => (
+                                        <button
+                                            key={t.id}
+                                            onClick={() => deleteCompany(t.id, t.name)}
+                                            title={t('layout.deleteCompany', { name: t.name }) || `Delete ${t.name}`}
+                                            style={{
+                                                fontSize: '10px', padding: '2px 6px',
+                                                background: 'transparent', color: 'var(--text-tertiary)',
+                                                border: 'none', borderRadius: '3px',
+                                                cursor: 'pointer', opacity: 0.6,
+                                                display: 'flex', alignItems: 'center', gap: '3px',
+                                            }}
+                                            onMouseEnter={e => { (e.target as HTMLElement).style.opacity = '1'; (e.target as HTMLElement).style.color = 'var(--status-error)'; }}
+                                            onMouseLeave={e => { (e.target as HTMLElement).style.opacity = '0.6'; (e.target as HTMLElement).style.color = 'var(--text-tertiary)'; }}
+                                        >
+                                            × {t.name}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                             {showNewCompany ? (
                                 <div style={{ marginTop: '6px', display: 'flex', gap: '4px' }}>
                                     <input

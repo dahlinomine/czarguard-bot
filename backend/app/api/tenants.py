@@ -131,6 +131,61 @@ async def assign_user_to_tenant(
     return {"status": "ok", "user_id": str(user_id), "tenant_id": str(tenant_id), "role": role}
 
 
+@router.delete("/{tenant_id}")
+async def delete_tenant(
+    tenant_id: uuid.UUID,
+    current_user: User = Depends(require_role("platform_admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a tenant and all its associated data (platform_admin only)."""
+    from app.models.agent import Agent
+    from app.models.audit import AuditLog, ApprovalRequest
+    from app.models.llm import LLMModel
+    from app.models.tool import Tool
+    from app.models.skill import Skill
+    from sqlalchemy import delete as sql_delete
+
+    result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = result.scalar_one_or_none()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    # Prevent deleting the last tenant
+    count_r = await db.execute(select(Tenant.id))
+    if len(count_r.all()) <= 1:
+        raise HTTPException(status_code=400, detail="Cannot delete the last tenant")
+
+    # Find a fallback tenant for reassigning users
+    fallback_r = await db.execute(
+        select(Tenant).where(Tenant.id != tenant_id).order_by(Tenant.created_at.asc()).limit(1)
+    )
+    fallback_tenant = fallback_r.scalar_one()
+
+    # Delete agents belonging to this tenant
+    agent_ids_q = select(Agent.id).where(Agent.tenant_id == tenant_id)
+    # Delete approval requests for these agents
+    await db.execute(sql_delete(ApprovalRequest).where(ApprovalRequest.agent_id.in_(agent_ids_q)))
+    # Delete audit logs for these agents
+    await db.execute(sql_delete(AuditLog).where(AuditLog.agent_id.in_(agent_ids_q)))
+    # Delete agents
+    await db.execute(sql_delete(Agent).where(Agent.tenant_id == tenant_id))
+
+    # Delete tenant-specific resources
+    await db.execute(sql_delete(LLMModel).where(LLMModel.tenant_id == tenant_id))
+    await db.execute(sql_delete(Tool).where(Tool.tenant_id == tenant_id))
+    await db.execute(sql_delete(Skill).where(Skill.tenant_id == tenant_id))
+
+    # Reassign users from this tenant to fallback
+    affected_users_r = await db.execute(select(User).where(User.tenant_id == tenant_id))
+    for u in affected_users_r.scalars().all():
+        u.tenant_id = fallback_tenant.id
+
+    # Delete the tenant itself
+    await db.delete(tenant)
+    await db.flush()
+    return {"ok": True, "fallback_tenant_id": str(fallback_tenant.id)}
+
+
 class TenantSimple(BaseModel):
     id: uuid.UUID
     name: str
