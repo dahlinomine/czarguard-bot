@@ -1481,7 +1481,7 @@ function AgentDetailInner() {
     });
     const saveWecom = useMutation({
         mutationFn: () => fetchAuth(`/agents/${id}/wecom-channel`, { method: 'POST', body: JSON.stringify(wecomForm) }),
-        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['wecom-channel', id] }); setWecomForm({ bot_id: '', bot_secret: '', corp_id: '', wecom_agent_id: '', secret: '', token: '', encoding_aes_key: '' }); },
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['wecom-channel', id] }); setWecomForm({ connection_mode: 'websocket', bot_id: '', bot_secret: '', corp_id: '', wecom_agent_id: '', secret: '', token: '', encoding_aes_key: '' }); },
     });
     const deleteWecom = useMutation({
         mutationFn: () => fetchAuth(`/agents/${id}/wecom-channel`, { method: 'DELETE' }),
