@@ -1467,7 +1467,7 @@ function AgentDetailInner() {
     });
 
     // ─── Channel config — WeCom ──────────────────────────
-    const [wecomForm, setWecomForm] = useState({ bot_id: '', bot_secret: '', corp_id: '', wecom_agent_id: '', secret: '', token: '', encoding_aes_key: '' });
+    const [wecomForm, setWecomForm] = useState({ connection_mode: 'websocket' as 'websocket' | 'webhook', bot_id: '', bot_secret: '', corp_id: '', wecom_agent_id: '', secret: '', token: '', encoding_aes_key: '' });
     const [wecomEditing, setWecomEditing] = useState(false);
     const { data: wecomConfig } = useQuery({
         queryKey: ['wecom-channel', id],
@@ -4403,7 +4403,6 @@ function AgentDetailInner() {
                                         </div>)}
                                     </div>
 
-                                </div>
                                     {/* Feishu */}
                                     <div style={{ border: '1px solid var(--border-subtle)', borderRadius: '8px', overflow: 'hidden', marginBottom: '12px' }}>
                                         <div onClick={() => setFeishuOpen(!feishuOpen)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', cursor: 'pointer', transition: 'background 0.15s' }} onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
@@ -4685,7 +4684,7 @@ function AgentDetailInner() {
                                                         <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', background: 'var(--bg-secondary)', padding: '6px 10px', borderRadius: '6px' }}>{wecomConfig?.extra_config?.connection_mode === 'websocket' ? t('channelGuide.wecom.ws_note') : t('channelGuide.wecom.note')}</div>
                                                     </details>
                                                     <div style={{ display: 'flex', gap: '8px' }}>
-                                                        <button className="btn btn-secondary" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => { setWecomForm({ bot_id: wecomConfig?.extra_config?.bot_id || '', bot_secret: wecomConfig?.extra_config?.bot_secret || '', corp_id: wecomConfig?.app_id || '', wecom_agent_id: wecomConfig?.extra_config?.wecom_agent_id || '', secret: wecomConfig?.app_secret || '', token: wecomConfig?.verification_token || '', encoding_aes_key: wecomConfig?.encrypt_key || '' }); setWecomEditing(true); }}>Edit</button>
+                                                        <button className="btn btn-secondary" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => { setWecomForm({ connection_mode: wecomConfig?.extra_config?.connection_mode === 'websocket' ? 'websocket' : 'webhook', bot_id: wecomConfig?.extra_config?.bot_id || '', bot_secret: wecomConfig?.extra_config?.bot_secret || '', corp_id: wecomConfig?.app_id || '', wecom_agent_id: wecomConfig?.extra_config?.wecom_agent_id || '', secret: wecomConfig?.app_secret || '', token: wecomConfig?.verification_token || '', encoding_aes_key: wecomConfig?.encrypt_key || '' }); setWecomEditing(true); }}>Edit</button>
                                                         <button className="btn btn-danger" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => deleteWecom.mutate()}>Disconnect</button>
                                                     </div>
                                                 </div>
@@ -4696,7 +4695,7 @@ function AgentDetailInner() {
                                                             <span style={{ fontSize: '10px' }}>&#9654;</span> {t('channelGuide.setupGuide')}
                                                         </summary>
                                                         <ol style={{ paddingLeft: '16px', margin: '8px 0', lineHeight: 1.9 }}>
-                                                            {wecomForm.bot_id ? (<>
+                                                            {wecomForm.connection_mode === 'websocket' ? (<>
                                                             <li>{t('channelGuide.wecom.ws_step1')}</li>
                                                             <li>{t('channelGuide.wecom.ws_step2')}</li>
                                                             <li>{t('channelGuide.wecom.ws_step3')}</li>
@@ -4712,21 +4711,62 @@ function AgentDetailInner() {
                                                             <li>{t('channelGuide.wecom.step6')}</li>
                                                             </>)}
                                                         </ol>
-                                                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', background: 'var(--bg-secondary)', padding: '6px 10px', borderRadius: '6px' }}>{wecomForm.bot_id ? t('channelGuide.wecom.ws_note') : t('channelGuide.wecom.note')}</div>
+                                                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', background: 'var(--bg-secondary)', padding: '6px 10px', borderRadius: '6px' }}>{wecomForm.connection_mode === 'websocket' ? t('channelGuide.wecom.ws_note') : t('channelGuide.wecom.note')}</div>
                                                     </details>
                                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
-                                                        <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', marginTop: '4px' }}>WebSocket Mode (Recommended)</div>
-                                                        <input className="input" placeholder="Bot ID" value={wecomForm.bot_id} onChange={e => setWecomForm(f => ({ ...f, bot_id: e.target.value }))} style={{ fontSize: '12px' }} />
-                                                        <input className="input" placeholder="Bot Secret" type={showPwds['wc_bot_secret'] ? 'text' : 'password'} value={wecomForm.bot_secret} onChange={e => setWecomForm(f => ({ ...f, bot_secret: e.target.value }))} style={{ fontSize: '12px' }} />
-                                                        <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-tertiary)', marginTop: '8px' }}>Webhook Mode (Legacy, optional)</div>
-                                                        <input className="input" placeholder="CorpID" value={wecomForm.corp_id} onChange={e => setWecomForm(f => ({ ...f, corp_id: e.target.value }))} style={{ fontSize: '12px' }} />
-                                                        <input className="input" placeholder="AgentID" value={wecomForm.wecom_agent_id} onChange={e => setWecomForm(f => ({ ...f, wecom_agent_id: e.target.value }))} style={{ fontSize: '12px' }} />
-                                                        <input className="input" placeholder="Secret" type={showPwds['wc_secret'] ? 'text' : 'password'} value={wecomForm.secret} onChange={e => setWecomForm(f => ({ ...f, secret: e.target.value }))} style={{ fontSize: '12px' }} />
-                                                        <input className="input" placeholder="Token" value={wecomForm.token} onChange={e => setWecomForm(f => ({ ...f, token: e.target.value }))} style={{ fontSize: '12px' }} />
-                                                        <input className="input" placeholder="EncodingAESKey" value={wecomForm.encoding_aes_key} onChange={e => setWecomForm(f => ({ ...f, encoding_aes_key: e.target.value }))} style={{ fontSize: '12px' }} />
+                                                        <div>
+                                                            <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '8px' }}>Connection Mode</label>
+                                                            <div style={{ display: 'flex', gap: '16px', marginBottom: '8px' }}>
+                                                                <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                                                                    <input type="radio" name="wecom_connection_mode" value="websocket" checked={wecomForm.connection_mode === 'websocket'} onChange={() => setWecomForm(f => ({ ...f, connection_mode: 'websocket' }))} />
+                                                                    WebSocket (Recommended)
+                                                                </label>
+                                                                <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                                                                    <input type="radio" name="wecom_connection_mode" value="webhook" checked={wecomForm.connection_mode === 'webhook'} onChange={() => setWecomForm(f => ({ ...f, connection_mode: 'webhook' }))} />
+                                                                    Webhook
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                        {wecomForm.connection_mode === 'websocket' ? (<>
+                                                        <div>
+                                                            <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Bot ID *</label>
+                                                            <input className="input" placeholder="aibXXXXXXXXXXXX" value={wecomForm.bot_id} onChange={e => setWecomForm(f => ({ ...f, bot_id: e.target.value }))} style={{ fontSize: '12px' }} />
+                                                        </div>
+                                                        <div>
+                                                            <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Bot Secret *</label>
+                                                            <div style={{ position: 'relative' }}>
+                                                                <input className="input" type={showPwds['wc_bot_secret'] ? 'text' : 'password'} value={wecomForm.bot_secret} onChange={e => setWecomForm(f => ({ ...f, bot_secret: e.target.value }))} style={{ fontSize: '12px', paddingRight: '36px', width: '100%' }} />
+                                                                <button type="button" onClick={() => togglePwd('wc_bot_secret')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '2px', display: 'flex', alignItems: 'center' }}>{showPwds['wc_bot_secret'] ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>}</button>
+                                                            </div>
+                                                        </div>
+                                                        </>) : (<>
+                                                        <div>
+                                                            <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>CorpID *</label>
+                                                            <input className="input" placeholder="CorpID" value={wecomForm.corp_id} onChange={e => setWecomForm(f => ({ ...f, corp_id: e.target.value }))} style={{ fontSize: '12px' }} />
+                                                        </div>
+                                                        <div>
+                                                            <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>AgentID *</label>
+                                                            <input className="input" placeholder="AgentID" value={wecomForm.wecom_agent_id} onChange={e => setWecomForm(f => ({ ...f, wecom_agent_id: e.target.value }))} style={{ fontSize: '12px' }} />
+                                                        </div>
+                                                        <div>
+                                                            <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Secret *</label>
+                                                            <div style={{ position: 'relative' }}>
+                                                                <input className="input" type={showPwds['wc_secret'] ? 'text' : 'password'} value={wecomForm.secret} onChange={e => setWecomForm(f => ({ ...f, secret: e.target.value }))} style={{ fontSize: '12px', paddingRight: '36px', width: '100%' }} />
+                                                                <button type="button" onClick={() => togglePwd('wc_secret')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '2px', display: 'flex', alignItems: 'center' }}>{showPwds['wc_secret'] ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>}</button>
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Token *</label>
+                                                            <input className="input" placeholder="Token" value={wecomForm.token} onChange={e => setWecomForm(f => ({ ...f, token: e.target.value }))} style={{ fontSize: '12px' }} />
+                                                        </div>
+                                                        <div>
+                                                            <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>EncodingAESKey *</label>
+                                                            <input className="input" placeholder="EncodingAESKey" value={wecomForm.encoding_aes_key} onChange={e => setWecomForm(f => ({ ...f, encoding_aes_key: e.target.value }))} style={{ fontSize: '12px' }} />
+                                                        </div>
+                                                        </>)}
                                                     </div>
                                                     <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                                                        <button className="btn btn-primary" style={{ fontSize: '12px', alignSelf: 'flex-start' }} onClick={() => { saveWecom.mutate(); setWecomEditing(false); }} disabled={(!wecomForm.bot_id || !wecomForm.bot_secret) && (!wecomForm.corp_id || !wecomForm.secret || !wecomForm.token || !wecomForm.encoding_aes_key) || saveWecom.isPending}>
+                                                        <button className="btn btn-primary" style={{ fontSize: '12px', alignSelf: 'flex-start' }} onClick={() => { saveWecom.mutate(); setWecomEditing(false); }} disabled={(wecomForm.connection_mode === 'websocket' ? (!wecomForm.bot_id || !wecomForm.bot_secret) : (!wecomForm.corp_id || !wecomForm.secret || !wecomForm.token || !wecomForm.encoding_aes_key)) || saveWecom.isPending}>
                                                             {saveWecom.isPending ? t('common.loading') : (wecomEditing ? 'Save Changes' : t('agent.settings.channel.saveChannel'))}
                                                         </button>
                                                         {wecomEditing && <button className="btn btn-secondary" style={{ fontSize: '12px' }} onClick={() => setWecomEditing(false)}>Cancel</button>}
@@ -4892,6 +4932,8 @@ function AgentDetailInner() {
                                             </div>
                                         )}
                                     </div>
+
+                                </div>
 
                                 {/* Danger Zone */}
                                 <div className="card" style={{ borderColor: 'var(--error)' }}>

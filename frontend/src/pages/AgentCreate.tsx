@@ -746,7 +746,7 @@ Body: {"message_id": "<id>", "result": "<response>"}
                                         borderBottom: feishuOpen ? '1px solid var(--border-default)' : 'none',
                                     }}
                                 >
-                                    <span style={{ fontSize: '20px' }}>🐦</span>
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3.64 7.2c.83 2.33 2.52 4.36 4.76 5.53L19.2 3.2c-.32-.09-.67-.11-1.03-.04L3.64 7.2z" fill="#00D6B9"/><path d="M8.4 12.73c.68.35 1.41.6 2.16.73l10.2-7.52c-.26-.56-.72-1.02-1.36-1.24L8.4 12.73z" fill="#3370FF"/><path d="M10.56 13.46c1.18.19 2.39.09 3.5-.3l6.86-5.06-.12-.14L10.56 13.46z" fill="#3370FF"/><path d="M14.06 13.16a8.1 8.1 0 002.62-1.67l4.24-3.13-.12-.42L14.06 13.16z" fill="#3370FF"/><path d="M16.68 11.49a8 8 0 001.7-2.15l2.54-1.87-.12-.53-4.12 4.55z" fill="#3370FF"/><path d="M3.64 7.2l-.24.7c-.94 2.82-.37 5.6 1.36 7.7L16.68 3.96 3.64 7.2z" fill="#00D6B9"/><path d="M4.76 15.6a8.02 8.02 0 003.64 3.94V12.73l-3.64 2.87z" fill="#3370FF"/><path d="M8.4 19.54c.68.35 1.41.56 2.16.64v-6.72l-2.16 6.08z" fill="#3370FF"/></svg>
                                     <div style={{ flex: 1 }}>
                                         <div style={{ fontWeight: 500, fontSize: '13px' }}>{t('wizard.step5.feishu', 'Feishu / Lark')}</div>
                                         <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{t('wizard.step5.feishuDesc', 'Connect via Feishu Open Platform bot')}</div>
@@ -803,23 +803,24 @@ Body: {"message_id": "<id>", "result": "<response>"}
                                 )}
                             </div>
 
-                            {/* Other channels — coming soon */}
+                            {/* Other channels — configurable in Settings after creation */}
                             {[
-                                { icon: '💬', name: t('wizard.step5.dingtalk', 'DingTalk'), desc: t('wizard.step5.dingtalkDesc', 'DingTalk custom robot integration') },
-                                { icon: '🏢', name: t('wizard.step5.wecom', 'WeCom'), desc: t('wizard.step5.wecomDesc', 'WeCom (企业微信) application bot') },
-                                { icon: '📱', name: 'WhatsApp', desc: t('wizard.step5.whatsappDesc', 'WhatsApp Business API integration') },
+                                { icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="4" fill="#7B83EB"/><path d="M14.5 7a2 2 0 100-4 2 2 0 000 4zm-5 2a2.5 2.5 0 100-5 2.5 2.5 0 000 5zm5.5 1.5c0-.3.2-.5.5-.5h3a2 2 0 012 2v3.5a1 1 0 01-2 0V12h-3a.5.5 0 01-.5-.5zM4 11.5A1.5 1.5 0 015.5 10h5A1.5 1.5 0 0112 11.5V17a3 3 0 01-6 0v-1H5.5A1.5 1.5 0 014 14.5v-3z" fill="white"/></svg>, name: t('common.channels.teams', 'Microsoft Teams'), desc: 'Teams Bot' },
+                                { icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#07C160"/><path d="M7.5 9.5a1 1 0 110-2 1 1 0 010 2zm4 0a1 1 0 110-2 1 1 0 010 2zm4 0a1 1 0 110-2 1 1 0 010 2zM6 13h5l2 3h-3l-1 2-1-2H6v-3z" fill="white"/></svg>, name: t('common.channels.wecom', 'WeCom'), desc: 'WebSocket / Webhook' },
+                                { icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="4" fill="#007FFF"/><path d="M8.5 6.5l7.5 1.3-3.5 3.7 3.5 3.7L8.5 16.5v-10z" fill="white"/></svg>, name: t('common.channels.dingtalk', 'DingTalk'), desc: 'Stream Mode' },
+                                { icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#0052CC"/><path d="M7 13l3-6 2 4 2-4 3 6H7z" fill="white"/></svg>, name: 'Atlassian', desc: 'Jira / Confluence / Compass (Rovo MCP)' },
                             ].map((ch) => (
-                                <div key={ch.name} style={{
+                                <div key={typeof ch.name === 'string' ? ch.name : ch.desc} style={{
                                     display: 'flex', alignItems: 'center', gap: '12px', padding: '14px',
                                     background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
-                                    borderRadius: '8px', opacity: 0.6,
+                                    borderRadius: '8px', opacity: 0.7,
                                 }}>
-                                    <span style={{ fontSize: '20px' }}>{ch.icon}</span>
+                                    {ch.icon}
                                     <div style={{ flex: 1 }}>
                                         <div style={{ fontWeight: 500, fontSize: '13px' }}>{ch.name}</div>
                                         <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{ch.desc}</div>
                                     </div>
-                                    <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '10px', background: 'var(--bg-secondary)', color: 'var(--text-tertiary)', fontWeight: 500 }}>Coming Soon</span>
+                                    <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '10px', background: 'var(--bg-secondary)', color: 'var(--text-tertiary)', fontWeight: 500 }}>Configure in Settings</span>
                                 </div>
                             ))}
                         </div>
