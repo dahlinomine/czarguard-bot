@@ -244,7 +244,8 @@ async def report_result(
     agent.openclaw_last_seen = datetime.now(timezone.utc)
 
     # Save result as assistant chat message and push via WebSocket
-    if body.result and msg.conversation_id:
+    # (only for user-originated messages; agent-to-agent skips this)
+    if body.result and msg.conversation_id and msg.sender_user_id:
         from app.models.audit import ChatMessage
         assistant_msg = ChatMessage(
             agent_id=agent.id,
@@ -258,7 +259,7 @@ async def report_result(
     await db.commit()
 
     # Push to WebSocket if user is connected
-    if body.result and msg.conversation_id:
+    if body.result and msg.conversation_id and msg.sender_user_id:
         try:
             from app.api.websocket import manager
             await manager.send_message(str(agent.id), {
