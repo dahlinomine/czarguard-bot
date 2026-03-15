@@ -4828,27 +4828,6 @@ function AgentDetailInner() {
                                         </div>)}
                                     </div>
 
-                                    {/* DingTalk — coming soon */}
-                                    <div style={{ border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '16px', marginBottom: '12px', opacity: 0.6 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-tertiary)' }}>Web</span>
-                                            <div>
-                                                <div style={{ fontWeight: 600, fontSize: '14px' }}>DingTalk <span className="badge" style={{ fontSize: '10px', marginLeft: '6px' }}>Coming soon</span></div>
-                                                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>DingTalk</div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* WeCom — coming soon */}
-                                    <div style={{ border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '16px', opacity: 0.6 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-tertiary)' }}>API</span>
-                                            <div>
-                                                <div style={{ fontWeight: 600, fontSize: '14px' }}>WeCom <span className="badge" style={{ fontSize: '10px', marginLeft: '6px' }}>Coming soon</span></div>
-                                                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>WeCom / WeChat Work</div>
-                                            </div>
-                                        </div>
-                                    </div>
                                 </div>
 
                                 {/* Danger Zone */}

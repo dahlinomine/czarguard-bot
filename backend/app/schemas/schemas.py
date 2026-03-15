@@ -402,6 +402,7 @@ class GatewayRelationshipItem(BaseModel):
     type: str  # "human" or "agent"
     role: str | None = None  # e.g. "collaborator", "supervisor"
     description: str | None = None
+    channels: list[str] = []  # e.g. ["feishu"], ["agent"]
 
 
 class GatewayMessageOut(BaseModel):
@@ -415,6 +416,7 @@ class GatewayMessageOut(BaseModel):
     history: list[GatewayHistoryItem] = []
 
 
+
 class GatewayPollResponse(BaseModel):
     messages: list[GatewayMessageOut] = []
     relationships: list[GatewayRelationshipItem] = []
@@ -423,4 +425,10 @@ class GatewayPollResponse(BaseModel):
 class GatewayReportRequest(BaseModel):
     message_id: uuid.UUID
     result: str = Field(min_length=1)
+
+
+class GatewaySendMessageRequest(BaseModel):
+    target: str  # Name of target person or agent
+    content: str = Field(min_length=1)
+    channel: str | None = None  # Optional: "feishu", "agent", etc. Auto-detected if omitted.
 
