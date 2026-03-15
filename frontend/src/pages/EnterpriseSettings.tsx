@@ -1068,6 +1068,39 @@ export default function EnterpriseSettings() {
 
                         {/* ── Theme Color ── */}
                         <ThemeColorPicker />
+
+                        {/* ── Danger Zone: Delete Company ── */}
+                        <div style={{ marginTop: '32px', padding: '16px', border: '1px solid var(--status-error, #e53e3e)', borderRadius: '8px' }}>
+                            <h3 style={{ marginBottom: '4px', color: 'var(--status-error, #e53e3e)' }}>{t('enterprise.dangerZone', 'Danger Zone')}</h3>
+                            <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '12px' }}>
+                                {t('enterprise.deleteCompanyDesc', 'Permanently delete this company and all its data including agents, models, tools, and skills. This action cannot be undone.')}
+                            </p>
+                            <button
+                                className="btn"
+                                onClick={async () => {
+                                    const name = document.querySelector<HTMLInputElement>('.company-name-input')?.value || selectedTenantId;
+                                    if (!confirm(t('enterprise.deleteCompanyConfirm', 'Are you sure you want to delete this company and ALL its data? This cannot be undone.'))) return;
+                                    try {
+                                        const res = await fetchJson<any>(`/tenants/${selectedTenantId}`, { method: 'DELETE' });
+                                        // Switch to fallback tenant
+                                        const fallbackId = res.fallback_tenant_id;
+                                        localStorage.setItem('current_tenant_id', fallbackId);
+                                        setSelectedTenantId(fallbackId);
+                                        window.dispatchEvent(new StorageEvent('storage', { key: 'current_tenant_id', newValue: fallbackId }));
+                                        qc.invalidateQueries({ queryKey: ['tenants'] });
+                                    } catch (e: any) {
+                                        alert(e.message || 'Delete failed');
+                                    }
+                                }}
+                                style={{
+                                    background: 'transparent', color: 'var(--status-error, #e53e3e)',
+                                    border: '1px solid var(--status-error, #e53e3e)', borderRadius: '6px',
+                                    padding: '6px 16px', fontSize: '13px', cursor: 'pointer',
+                                }}
+                            >
+                                {t('enterprise.deleteCompany', 'Delete This Company')}
+                            </button>
+                        </div>
                     </div>
                 )}
 
