@@ -31,7 +31,7 @@ dependencies = [
     "python-pptx>=1.0.0",
     "lark-oapi>=1.2.9",
     "dingtalk-stream>=0.17.0",
-    "wecom-aibot-sdk-python>=0.4.0",
+    "wecom-aibot-sdk-python>=0.1.4",
     "pycryptodome>=3.20.0",
 ]
 
