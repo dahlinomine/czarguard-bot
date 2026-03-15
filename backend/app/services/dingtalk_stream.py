@@ -80,10 +80,18 @@ class DingTalkStreamManager:
                 """Custom handler that dispatches messages to the Clawith LLM pipeline."""
 
                 async def process(self, callback: dingtalk_stream.CallbackMessage):
-                    """Handle incoming bot message from DingTalk Stream."""
+                    """Handle incoming bot message from DingTalk Stream.
+
+                    NOTE: The SDK invokes this method in the thread's own asyncio loop,
+                    so we must dispatch to the main FastAPI loop for DB + LLM work.
+                    """
                     try:
-                        incoming = dingtalk_stream.ChatbotMessage(callback)
-                        user_text = self.extract_text_from_incoming_message(incoming)
+                        # Parse the raw data into a ChatbotMessage via class method
+                        incoming = dingtalk_stream.ChatbotMessage.from_dict(callback.data)
+
+                        # Extract text content
+                        text_list = incoming.get_text_list()
+                        user_text = " ".join(text_list).strip() if text_list else ""
 
                         if not user_text:
                             return dingtalk_stream.AckMessage.STATUS_OK, "empty message"
@@ -118,6 +126,8 @@ class DingTalkStreamManager:
                                 future.result(timeout=120)
                             except Exception as e:
                                 print(f"[DingTalk Stream] LLM processing error: {e}", flush=True)
+                                import traceback
+                                traceback.print_exc()
                         else:
                             print("[DingTalk Stream] Main loop not available for dispatch", flush=True)
 
