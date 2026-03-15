@@ -324,7 +324,7 @@ async def _send_to_agent_background(
     Accepts plain values (not ORM objects) to avoid stale session references
     since this runs after the request's DB session has closed.
     """
-    logger.info(f"[Gateway] _send_to_agent_background started: {source_agent_name} -> {target_agent_name}")
+    print(f"[Gateway] _send_to_agent_background started: {source_agent_name} -> {target_agent_name}")
     try:
         from app.api.websocket import call_llm
         from app.services.agent_context import build_agent_context
@@ -414,7 +414,7 @@ async def _send_to_agent_background(
             db.add(gw_reply)
             await db.commit()
 
-        logger.info(f"[Gateway] Agent {target_agent_name} replied to {source_agent_name}")
+        print(f"[Gateway] Agent {target_agent_name} replied to {source_agent_name}")
 
     except Exception as e:
         logger.error(f"[Gateway] send_to_agent_background failed: {e}")
@@ -447,7 +447,7 @@ async def send_message(
     )
     target_agent = result.scalars().first()
 
-    logger.info(f"[Gateway] send_message: target='{target_name}', found_agent={target_agent.name if target_agent else None}, agent_type={getattr(target_agent, 'agent_type', None) if target_agent else None}, channel_hint='{channel_hint}'")
+    print(f"[Gateway] send_message: target='{target_name}', found_agent={target_agent.name if target_agent else None}, agent_type={getattr(target_agent, 'agent_type', None) if target_agent else None}, channel_hint='{channel_hint}'")
 
     if target_agent and (not channel_hint or channel_hint == "agent"):
         conv_id = f"gw_agent_{agent.id}_{target_agent.id}"
