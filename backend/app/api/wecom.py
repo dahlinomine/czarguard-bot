@@ -88,23 +88,40 @@ async def configure_wecom_channel(
 ):
     """Configure WeCom bot for an agent.
 
-    Fields: corp_id, agent_id (wecom app id), secret, token, encoding_aes_key
+    Supports two modes:
+    - WebSocket (AI Bot): bot_id + bot_secret (no callback URL needed)
+    - Webhook (legacy): corp_id, secret, token, encoding_aes_key
     """
     agent, _ = await check_agent_access(db, current_user, agent_id)
     if not is_agent_creator(current_user, agent):
         raise HTTPException(status_code=403, detail="Only creator can configure channel")
 
+    # WebSocket mode fields (AI Bot)
+    bot_id = data.get("bot_id", "").strip()
+    bot_secret = data.get("bot_secret", "").strip()
+
+    # Legacy webhook mode fields
     corp_id = data.get("corp_id", "").strip()
     wecom_agent_id = data.get("wecom_agent_id", "").strip()
     secret = data.get("secret", "").strip()
     token = data.get("token", "").strip()
     encoding_aes_key = data.get("encoding_aes_key", "").strip()
 
-    if not corp_id or not secret or not token or not encoding_aes_key:
+    # At least one mode must be configured
+    has_ws_mode = bool(bot_id and bot_secret)
+    has_webhook_mode = bool(corp_id and secret and token and encoding_aes_key)
+    if not has_ws_mode and not has_webhook_mode:
         raise HTTPException(
             status_code=422,
-            detail="corp_id, secret, token, and encoding_aes_key are required"
+            detail="Either bot_id+bot_secret (WebSocket) or corp_id+secret+token+encoding_aes_key (Webhook) required"
         )
+
+    extra_config = {
+        "wecom_agent_id": wecom_agent_id,
+        "bot_id": bot_id,
+        "bot_secret": bot_secret,
+        "connection_mode": "websocket" if has_ws_mode else "webhook",
+    }
 
     result = await db.execute(
         select(ChannelConfig).where(
@@ -118,24 +135,38 @@ async def configure_wecom_channel(
         existing.app_secret = secret
         existing.encrypt_key = encoding_aes_key
         existing.verification_token = token
-        existing.extra_config = {"wecom_agent_id": wecom_agent_id}
+        existing.extra_config = extra_config
         existing.is_configured = True
         await db.flush()
-        return ChannelConfigOut.model_validate(existing)
+        config_out = ChannelConfigOut.model_validate(existing)
+    else:
+        config = ChannelConfig(
+            agent_id=agent_id,
+            channel_type="wecom",
+            app_id=corp_id,
+            app_secret=secret,
+            encrypt_key=encoding_aes_key,
+            verification_token=token,
+            extra_config=extra_config,
+            is_configured=True,
+        )
+        db.add(config)
+        await db.flush()
+        config_out = ChannelConfigOut.model_validate(config)
 
-    config = ChannelConfig(
-        agent_id=agent_id,
-        channel_type="wecom",
-        app_id=corp_id,
-        app_secret=secret,
-        encrypt_key=encoding_aes_key,
-        verification_token=token,
-        extra_config={"wecom_agent_id": wecom_agent_id},
-        is_configured=True,
-    )
-    db.add(config)
-    await db.flush()
-    return ChannelConfigOut.model_validate(config)
+    # Auto-start WebSocket client if bot credentials provided
+    if has_ws_mode:
+        try:
+            from app.services.wecom_stream import wecom_stream_manager
+            import asyncio
+            asyncio.create_task(
+                wecom_stream_manager.start_client(agent_id, bot_id, bot_secret)
+            )
+            print(f"[WeCom] WebSocket client start triggered for agent {agent_id}", flush=True)
+        except Exception as e:
+            print(f"[WeCom] Failed to start WebSocket client: {e}", flush=True)
+
+    return config_out
 
 
 @router.get("/agents/{agent_id}/wecom-channel", response_model=ChannelConfigOut)

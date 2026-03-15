@@ -62,6 +62,7 @@ async def lifespan(app: FastAPI):
     from app.services.template_seeder import seed_agent_templates
     from app.services.feishu_ws import feishu_ws_manager
     from app.services.dingtalk_stream import dingtalk_stream_manager
+    from app.services.wecom_stream import wecom_stream_manager
 
     # ── Step 0: Ensure all DB tables exist (idempotent, safe to run on every startup) ──
     try:
@@ -171,6 +172,7 @@ async def lifespan(app: FastAPI):
             ("trigger_daemon", start_trigger_daemon()),
             ("feishu_ws", feishu_ws_manager.start_all()),
             ("dingtalk_stream", dingtalk_stream_manager.start_all()),
+            ("wecom_stream", wecom_stream_manager.start_all()),
         ]:
             task = asyncio.create_task(coro, name=name)
             task.add_done_callback(_bg_task_error)

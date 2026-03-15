@@ -1467,7 +1467,7 @@ function AgentDetailInner() {
     });
 
     // ─── Channel config — WeCom ──────────────────────────
-    const [wecomForm, setWecomForm] = useState({ corp_id: '', wecom_agent_id: '', secret: '', token: '', encoding_aes_key: '' });
+    const [wecomForm, setWecomForm] = useState({ bot_id: '', bot_secret: '', corp_id: '', wecom_agent_id: '', secret: '', token: '', encoding_aes_key: '' });
     const [wecomEditing, setWecomEditing] = useState(false);
     const { data: wecomConfig } = useQuery({
         queryKey: ['wecom-channel', id],
@@ -1481,7 +1481,7 @@ function AgentDetailInner() {
     });
     const saveWecom = useMutation({
         mutationFn: () => fetchAuth(`/agents/${id}/wecom-channel`, { method: 'POST', body: JSON.stringify(wecomForm) }),
-        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['wecom-channel', id] }); setWecomForm({ corp_id: '', wecom_agent_id: '', secret: '', token: '', encoding_aes_key: '' }); },
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['wecom-channel', id] }); setWecomForm({ bot_id: '', bot_secret: '', corp_id: '', wecom_agent_id: '', secret: '', token: '', encoding_aes_key: '' }); },
     });
     const deleteWecom = useMutation({
         mutationFn: () => fetchAuth(`/agents/${id}/wecom-channel`, { method: 'DELETE' }),
@@ -4420,7 +4420,7 @@ function AgentDetailInner() {
                                                         <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', background: 'var(--bg-secondary)', padding: '6px 10px', borderRadius: '6px' }}>{t('channelGuide.wecom.note')}</div>
                                                     </details>
                                                     <div style={{ display: 'flex', gap: '8px' }}>
-                                                        <button className="btn btn-secondary" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => { setWecomForm({ corp_id: wecomConfig?.app_id || '', wecom_agent_id: wecomConfig?.extra_config?.wecom_agent_id || '', secret: wecomConfig?.app_secret || '', token: wecomConfig?.verification_token || '', encoding_aes_key: wecomConfig?.encrypt_key || '' }); setWecomEditing(true); }}>Edit</button>
+                                                        <button className="btn btn-secondary" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => { setWecomForm({ bot_id: wecomConfig?.extra_config?.bot_id || '', bot_secret: wecomConfig?.extra_config?.bot_secret || '', corp_id: wecomConfig?.app_id || '', wecom_agent_id: wecomConfig?.extra_config?.wecom_agent_id || '', secret: wecomConfig?.app_secret || '', token: wecomConfig?.verification_token || '', encoding_aes_key: wecomConfig?.encrypt_key || '' }); setWecomEditing(true); }}>Edit</button>
                                                         <button className="btn btn-danger" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => deleteWecom.mutate()}>Disconnect</button>
                                                     </div>
                                                 </div>
@@ -4441,6 +4441,10 @@ function AgentDetailInner() {
                                                         <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', background: 'var(--bg-secondary)', padding: '6px 10px', borderRadius: '6px' }}>{t('channelGuide.wecom.note')}</div>
                                                     </details>
                                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+                                                        <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', marginTop: '4px' }}>WebSocket Mode (Recommended)</div>
+                                                        <input className="input" placeholder="Bot ID" value={wecomForm.bot_id} onChange={e => setWecomForm(f => ({ ...f, bot_id: e.target.value }))} style={{ fontSize: '12px' }} />
+                                                        <input className="input" placeholder="Bot Secret" type={showPwds['wc_bot_secret'] ? 'text' : 'password'} value={wecomForm.bot_secret} onChange={e => setWecomForm(f => ({ ...f, bot_secret: e.target.value }))} style={{ fontSize: '12px' }} />
+                                                        <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-tertiary)', marginTop: '8px' }}>Webhook Mode (Legacy, optional)</div>
                                                         <input className="input" placeholder="CorpID" value={wecomForm.corp_id} onChange={e => setWecomForm(f => ({ ...f, corp_id: e.target.value }))} style={{ fontSize: '12px' }} />
                                                         <input className="input" placeholder="AgentID" value={wecomForm.wecom_agent_id} onChange={e => setWecomForm(f => ({ ...f, wecom_agent_id: e.target.value }))} style={{ fontSize: '12px' }} />
                                                         <input className="input" placeholder="Secret" type={showPwds['wc_secret'] ? 'text' : 'password'} value={wecomForm.secret} onChange={e => setWecomForm(f => ({ ...f, secret: e.target.value }))} style={{ fontSize: '12px' }} />
@@ -4448,7 +4452,7 @@ function AgentDetailInner() {
                                                         <input className="input" placeholder="EncodingAESKey" value={wecomForm.encoding_aes_key} onChange={e => setWecomForm(f => ({ ...f, encoding_aes_key: e.target.value }))} style={{ fontSize: '12px' }} />
                                                     </div>
                                                     <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                                                        <button className="btn btn-primary" style={{ fontSize: '12px', alignSelf: 'flex-start' }} onClick={() => { saveWecom.mutate(); setWecomEditing(false); }} disabled={!wecomForm.corp_id || !wecomForm.secret || !wecomForm.token || !wecomForm.encoding_aes_key || saveWecom.isPending}>
+                                                        <button className="btn btn-primary" style={{ fontSize: '12px', alignSelf: 'flex-start' }} onClick={() => { saveWecom.mutate(); setWecomEditing(false); }} disabled={(!wecomForm.bot_id || !wecomForm.bot_secret) && (!wecomForm.corp_id || !wecomForm.secret || !wecomForm.token || !wecomForm.encoding_aes_key) || saveWecom.isPending}>
                                                             {saveWecom.isPending ? t('common.loading') : (wecomEditing ? 'Save Changes' : t('agent.settings.channel.saveChannel'))}
                                                         </button>
                                                         {wecomEditing && <button className="btn btn-secondary" style={{ fontSize: '12px' }} onClick={() => setWecomEditing(false)}>Cancel</button>}
