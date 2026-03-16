@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { agentApi, enterpriseApi, skillApi } from '../services/api';
+import { agentApi, channelApi, enterpriseApi, skillApi } from '../services/api';
 
 const STEPS = ['basicInfo', 'personality', 'skills', 'permissions', 'channel'] as const;
 const OPENCLAW_STEPS = ['basicInfo', 'permissions'] as const;
@@ -33,6 +33,7 @@ export default function AgentCreate() {
         feishu_app_id: '',
         feishu_app_secret: '',
         feishu_encrypt_key: '',
+        feishu_connection_mode: 'websocket',
         slack_bot_token: '',
         slack_signing_secret: '',
         discord_application_id: '',
@@ -80,8 +81,51 @@ export default function AgentCreate() {
             const agent = await agentApi.create(data);
             return agent;
         },
-        onSuccess: (agent) => {
+        onSuccess: async (agent) => {
             queryClient.invalidateQueries({ queryKey: ['agents'] });
+
+            // Automatically bind channels if configured in wizard
+            if (form.feishu_app_id && form.feishu_app_secret) {
+                try {
+                    await channelApi.create(agent.id, {
+                        channel_type: 'feishu',
+                        app_id: form.feishu_app_id,
+                        app_secret: form.feishu_app_secret,
+                        encrypt_key: form.feishu_encrypt_key || undefined,
+                        extra_config: {
+                            connection_mode: form.feishu_connection_mode
+                        }
+                    });
+                } catch (err) {
+                    console.error('Failed to bind Feishu channel:', err);
+                }
+            }
+
+            if (form.slack_bot_token && form.slack_signing_secret) {
+                try {
+                    await channelApi.create(agent.id, {
+                        channel_type: 'slack',
+                        app_id: form.slack_bot_token,
+                        app_secret: form.slack_signing_secret,
+                    });
+                } catch (err) {
+                    console.error('Failed to bind Slack channel:', err);
+                }
+            }
+
+            if (form.discord_bot_token && form.discord_application_id) {
+                try {
+                    await channelApi.create(agent.id, {
+                        channel_type: 'discord',
+                        app_id: form.discord_application_id,
+                        app_secret: form.discord_bot_token,
+                        encrypt_key: form.discord_public_key || undefined,
+                    });
+                } catch (err) {
+                    console.error('Failed to bind Discord channel:', err);
+                }
+            }
+
             if (agent.api_key) {
                 setCreatedApiKey(agent.api_key);
             } else {
@@ -796,17 +840,45 @@ For humans, the message is delivered via their available channel (e.g. Feishu).`
                                                 <span style={{ fontSize: '10px' }}>▶</span> {t('channelGuide.setupGuide')}
                                             </summary>
                                             <ol style={{ paddingLeft: '16px', margin: '8px 0', lineHeight: 1.9 }}>
-                                                <li>{t('channelGuide.feishu.step1')}</li>
-                                                <li>{t('channelGuide.feishu.step2')}</li>
-                                                <li>{t('channelGuide.feishu.step3')}</li>
-                                                <li>{t('channelGuide.feishu.step4')}</li>
-                                                <li>{t('channelGuide.feishu.step5')}</li>
-                                                <li>{t('channelGuide.feishu.step6')}</li>
-                                                <li>{t('channelGuide.feishu.step7')}</li>
-                                                <li>{t('channelGuide.feishu.step8')}</li>
+                                                {form.feishu_connection_mode === 'websocket' ? (<>
+                                                    <li>{t('channelGuide.feishu.ws_step1')}</li>
+                                                    <li>{t('channelGuide.feishu.ws_step2')}</li>
+                                                    <li>{t('channelGuide.feishu.ws_step3')}</li>
+                                                    <li>{t('channelGuide.feishu.ws_step4')}</li>
+                                                    <li>{t('channelGuide.feishu.ws_step5')}</li>
+                                                    <li>{t('channelGuide.feishu.ws_step6')}</li>
+                                                    <li>{t('channelGuide.feishu.ws_step7')}</li>
+                                                    <li>{t('channelGuide.feishu.ws_step8')}</li>
+                                                </>) : (<>
+                                                    <li>{t('channelGuide.feishu.step1')}</li>
+                                                    <li>{t('channelGuide.feishu.step2')}</li>
+                                                    <li>{t('channelGuide.feishu.step3')}</li>
+                                                    <li>{t('channelGuide.feishu.step4')}</li>
+                                                    <li>{t('channelGuide.feishu.step5')}</li>
+                                                    <li>{t('channelGuide.feishu.step6')}</li>
+                                                    <li>{t('channelGuide.feishu.step7')}</li>
+                                                    <li>{t('channelGuide.feishu.step8')}</li>
+                                                </>)}
                                             </ol>
                                             <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', background: 'var(--bg-secondary)', padding: '6px 10px', borderRadius: '6px' }}>💡 {t('channelGuide.feishu.note')}</div>
                                         </details>
+                                        <div className="form-group" style={{ marginBottom: '16px' }}>
+                                            <label className="form-label">{t('wizard.step5.connectionMode')}</label>
+                                            <div style={{ display: 'flex', gap: '16px', marginTop: '8px', marginBottom: '8px' }}>
+                                                <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                                                    <input type="radio" name="feishu_mode" value="websocket"
+                                                        checked={form.feishu_connection_mode === 'websocket'}
+                                                        onChange={() => setForm({ ...form, feishu_connection_mode: 'websocket' })} />
+                                                    {t('wizard.step5.modeWebsocket')}
+                                                </label>
+                                                <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                                                    <input type="radio" name="feishu_mode" value="webhook"
+                                                        checked={form.feishu_connection_mode === 'webhook'}
+                                                        onChange={() => setForm({ ...form, feishu_connection_mode: 'webhook' })} />
+                                                    {t('wizard.step5.modeWebhook')}
+                                                </label>
+                                            </div>
+                                        </div>
                                         <div className="form-group">
                                             <label className="form-label">App ID</label>
                                             <input className="form-input" value={form.feishu_app_id}
@@ -819,12 +891,14 @@ For humans, the message is delivered via their available channel (e.g. Feishu).`
                                                 onChange={(e) => setForm({ ...form, feishu_app_secret: e.target.value })}
                                                 placeholder="xxxxxxxxxxxxxxxxxxxxxxxx" />
                                         </div>
-                                        <div className="form-group">
-                                            <label className="form-label">{t('wizard.step5.encryptKeyOptional')}</label>
-                                            <input className="form-input" value={form.feishu_encrypt_key}
-                                                onChange={(e) => setForm({ ...form, feishu_encrypt_key: e.target.value })}
-                                                placeholder={t('wizard.step5.encryptKeyPlaceholder')} />
-                                        </div>
+                                        {form.feishu_connection_mode === 'webhook' && (
+                                            <div className="form-group">
+                                                <label className="form-label">{t('wizard.step5.encryptKeyOptional')}</label>
+                                                <input className="form-input" value={form.feishu_encrypt_key}
+                                                    onChange={(e) => setForm({ ...form, feishu_encrypt_key: e.target.value })}
+                                                    placeholder={t('wizard.step5.encryptKeyPlaceholder')} />
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
