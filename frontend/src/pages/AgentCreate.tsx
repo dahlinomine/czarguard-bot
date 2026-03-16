@@ -98,6 +98,9 @@ export default function AgentCreate() {
                     });
                 } catch (err) {
                     console.error('Failed to bind Feishu channel:', err);
+                    setError(
+                        'Failed to bind the Feishu channel. Please verify the Feishu configuration on the agent settings page and try again.'
+                    );
                 }
             }
 
@@ -110,6 +113,9 @@ export default function AgentCreate() {
                     });
                 } catch (err) {
                     console.error('Failed to bind Slack channel:', err);
+                    setError(
+                        'Failed to bind the Slack channel. Please verify the Slack configuration on the agent settings page and try again.'
+                    );
                 }
             }
 
@@ -123,6 +129,9 @@ export default function AgentCreate() {
                     });
                 } catch (err) {
                     console.error('Failed to bind Discord channel:', err);
+                    setError(
+                        'Failed to bind the Discord channel. Please verify the Discord configuration on the agent settings page and try again.'
+                    );
                 }
             }
 
