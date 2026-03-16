@@ -155,7 +155,6 @@ const CHANNEL_REGISTRY: ChannelDef[] = [
         nameFallback: 'WeCom',
         desc: 'WebSocket / Webhook',
         apiSlug: 'wecom-channel',
-        editOnly: true,
         connectionMode: true,
         fields: [
             { key: 'corp_id', label: 'CorpID', required: true },
