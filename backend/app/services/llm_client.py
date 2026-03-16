@@ -279,10 +279,15 @@ class OpenAICompatibleClient(LLMClient):
         """
         chunk = LLMStreamChunk()
 
-        if not line.startswith("data: "):
+        # SSE spec: "data:" may or may not have a space after the colon
+        if line.startswith("data: "):
+            data_str = line[6:]
+        elif line.startswith("data:"):
+            data_str = line[5:]
+        else:
             return chunk, in_think, tag_buffer
 
-        data_str = line[6:].strip()
+        data_str = data_str.strip()
         if data_str == "[DONE]":
             chunk.is_finished = True
             return chunk, in_think, tag_buffer
