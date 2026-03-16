@@ -1,7 +1,27 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { adminApi } from '../services/api';
 import { useAuthStore } from '../stores';
+
+// Format large token numbers with K/M/B suffixes
+function formatTokens(n: number | null | undefined): string {
+    if (n == null) return '-';
+    if (n < 1000) return String(n);
+    if (n < 1_000_000) return (n / 1000).toFixed(n < 10_000 ? 1 : 0) + 'K';
+    if (n < 1_000_000_000) return (n / 1_000_000).toFixed(n < 10_000_000 ? 1 : 0) + 'M';
+    return (n / 1_000_000_000).toFixed(1) + 'B';
+}
+
+// Format datetime to locale string
+function formatDate(dt: string | null | undefined): string {
+    if (!dt) return '-';
+    return new Date(dt).toLocaleDateString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit' });
+}
+
+type SortKey = 'name' | 'user_count' | 'agent_count' | 'total_tokens' | 'created_at' | 'is_active';
+type SortDir = 'asc' | 'desc';
+
+const PAGE_SIZE = 15;
 
 // Platform Admin company management page
 export default function AdminCompanies() {
@@ -10,6 +30,13 @@ export default function AdminCompanies() {
     const [companies, setCompanies] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+
+    // Sorting
+    const [sortKey, setSortKey] = useState<SortKey>('created_at');
+    const [sortDir, setSortDir] = useState<SortDir>('desc');
+
+    // Pagination
+    const [page, setPage] = useState(0);
 
     // Platform settings
     const [settings, setSettings] = useState<any>({});
@@ -60,6 +87,44 @@ export default function AdminCompanies() {
         );
     }
 
+    // Sorting logic
+    const handleSort = (key: SortKey) => {
+        if (sortKey === key) {
+            setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortKey(key);
+            setSortDir(key === 'name' ? 'asc' : 'desc');
+        }
+        setPage(0);
+    };
+
+    const sorted = useMemo(() => {
+        const list = [...companies];
+        list.sort((a, b) => {
+            let av = a[sortKey], bv = b[sortKey];
+            if (sortKey === 'name') {
+                av = (av || '').toLowerCase();
+                bv = (bv || '').toLowerCase();
+            }
+            if (sortKey === 'created_at') {
+                av = av ? new Date(av).getTime() : 0;
+                bv = bv ? new Date(bv).getTime() : 0;
+            }
+            if (sortKey === 'is_active') {
+                av = av ? 1 : 0;
+                bv = bv ? 1 : 0;
+            }
+            if (av < bv) return sortDir === 'asc' ? -1 : 1;
+            if (av > bv) return sortDir === 'asc' ? 1 : -1;
+            return 0;
+        });
+        return list;
+    }, [companies, sortKey, sortDir]);
+
+    // Pagination
+    const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
+    const paged = sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
     const handleCreate = async () => {
         if (!newName.trim()) return;
         setCreating(true);
@@ -99,8 +164,30 @@ export default function AdminCompanies() {
         setSettingsLoading(false);
     };
 
+    // Sort indicator arrow
+    const SortArrow = ({ col }: { col: SortKey }) => {
+        if (sortKey !== col) return <span style={{ opacity: 0.3, marginLeft: '2px' }}>&#x2195;</span>;
+        return <span style={{ marginLeft: '2px' }}>{sortDir === 'asc' ? '\u2191' : '\u2193'}</span>;
+    };
+
+    // Column header style
+    const thStyle: React.CSSProperties = {
+        cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '2px',
+    };
+
+    const columns: { key: SortKey; label: string; flex: string }[] = [
+        { key: 'name', label: t('admin.company', 'Company'), flex: '2fr' },
+        { key: 'user_count', label: t('admin.users', 'Users'), flex: '80px' },
+        { key: 'agent_count', label: t('admin.agents', 'Agents'), flex: '80px' },
+        { key: 'total_tokens', label: t('admin.tokens', 'Token Usage'), flex: '100px' },
+        { key: 'created_at', label: t('admin.createdAt', 'Created'), flex: '100px' },
+        { key: 'is_active', label: t('admin.status', 'Status'), flex: '120px' },
+    ];
+
+    const gridCols = columns.map(c => c.flex).join(' ');
+
     return (
-        <div style={{ maxWidth: '960px', margin: '0 auto', padding: '32px 24px' }}>
+        <div style={{ maxWidth: '1040px', margin: '0 auto', padding: '32px 24px' }}>
             {toast && (
                 <div style={{
                     position: 'fixed', top: '20px', right: '20px', padding: '10px 20px',
@@ -184,17 +271,18 @@ export default function AdminCompanies() {
 
             {/* Company List */}
             <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
+                {/* Table Header */}
                 <div style={{
-                    display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 120px',
+                    display: 'grid', gridTemplateColumns: gridCols,
                     gap: '12px', padding: '10px 16px', fontSize: '11px', fontWeight: 600,
                     color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em',
                     borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-secondary)',
                 }}>
-                    <div>{t('admin.company', 'Company')}</div>
-                    <div>{t('admin.users', 'Users')}</div>
-                    <div>{t('admin.agents', 'Agents')}</div>
-                    <div>{t('admin.tokens', 'Token Usage')}</div>
-                    <div>{t('admin.status', 'Status')}</div>
+                    {columns.map(col => (
+                        <div key={col.key} style={thStyle} onClick={() => handleSort(col.key)}>
+                            {col.label}<SortArrow col={col.key} />
+                        </div>
+                    ))}
                 </div>
 
                 {loading && (
@@ -209,9 +297,9 @@ export default function AdminCompanies() {
                     </div>
                 )}
 
-                {!loading && companies.map((c: any) => (
+                {!loading && paged.map((c: any) => (
                     <div key={c.id} style={{
-                        display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 120px',
+                        display: 'grid', gridTemplateColumns: gridCols,
                         gap: '12px', padding: '12px 16px', alignItems: 'center',
                         borderBottom: '1px solid var(--border-subtle)', fontSize: '13px',
                         opacity: c.is_active ? 1 : 0.5,
@@ -222,7 +310,12 @@ export default function AdminCompanies() {
                         </div>
                         <div>{c.user_count ?? '-'}</div>
                         <div>{c.agent_count ?? '-'}</div>
-                        <div style={{ fontSize: '12px' }}>{c.total_tokens != null ? c.total_tokens.toLocaleString() : '-'}</div>
+                        <div style={{ fontSize: '12px', fontFamily: 'var(--font-mono)' }}>
+                            {formatTokens(c.total_tokens)}
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                            {formatDate(c.created_at)}
+                        </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span className={`badge ${c.is_active ? 'badge-success' : 'badge-error'}`} style={{ fontSize: '10px' }}>
                                 {c.is_active ? t('admin.active', 'Active') : t('admin.disabled', 'Disabled')}
@@ -241,6 +334,33 @@ export default function AdminCompanies() {
                 {!loading && companies.length === 0 && !error && (
                     <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-tertiary)', fontSize: '13px' }}>
                         {t('common.noData', 'No data')}
+                    </div>
+                )}
+
+                {/* Pagination */}
+                {!loading && totalPages > 1 && (
+                    <div style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        padding: '10px 16px', borderTop: '1px solid var(--border-subtle)',
+                        fontSize: '12px', color: 'var(--text-tertiary)', background: 'var(--bg-secondary)',
+                    }}>
+                        <span>
+                            {t('admin.showing', '{{start}}-{{end}} of {{total}}', {
+                                start: page * PAGE_SIZE + 1,
+                                end: Math.min((page + 1) * PAGE_SIZE, sorted.length),
+                                total: sorted.length,
+                            })}
+                        </span>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                            <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: '12px' }}
+                                disabled={page === 0} onClick={() => setPage(p => p - 1)}>
+                                &lsaquo; {t('admin.prev', 'Prev')}
+                            </button>
+                            <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: '12px' }}
+                                disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>
+                                {t('admin.next', 'Next')} &rsaquo;
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>

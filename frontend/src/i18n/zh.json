@@ -628,7 +628,11 @@
     "disabled": "已停用",
     "disable": "停用",
     "enable": "启用",
-    "confirmDisable": "停用此公司？所有用户和数字员工将被暂停。"
+    "confirmDisable": "停用此公司？所有用户和数字员工将被暂停。",
+    "createdAt": "创建时间",
+    "showing": "{{start}}-{{end}} / {{total}}",
+    "prev": "上一页",
+    "next": "下一页"
   },
   "companySetup": {
     "title": "设置你的公司",
