@@ -723,7 +723,7 @@ function AgentDetailInner() {
             const res = await fetch(`/api/agents/${id}/sessions?scope=all`, { headers: { Authorization: `Bearer ${tkn}` } });
             if (!res.ok) return [];
             const all = await res.json();
-            return all.filter((s: any) => s.source_channel === 'trigger').slice(0, 20);
+            return all.filter((s: any) => s.source_channel === 'trigger');
         },
         enabled: !!id && activeTab === 'aware',
         refetchInterval: activeTab === 'aware' ? 10000 : false,
@@ -737,6 +737,8 @@ function AgentDetailInner() {
     const [showCompletedFocus, setShowCompletedFocus] = useState(false);
     const [showAllTriggers, setShowAllTriggers] = useState(false);
     const [showAllReflections, setShowAllReflections] = useState(false);
+    const [reflectionPage, setReflectionPage] = useState(0);
+    const REFLECTIONS_PAGE_SIZE = 10;
     const SECTION_PAGE_SIZE = 5;
 
     const { data: soulContent } = useQuery({
@@ -2284,10 +2286,10 @@ function AgentDetailInner() {
                                 </details>
                             )}
 
-                            {/* ── Reflections Card ── */}
                             {reflectionSessions.length > 0 && (() => {
-                                const visibleSessions = showAllReflections ? reflectionSessions : reflectionSessions.slice(0, SECTION_PAGE_SIZE);
-                                const hiddenCount = reflectionSessions.length - visibleSessions.length;
+                                const totalPages = Math.ceil(reflectionSessions.length / REFLECTIONS_PAGE_SIZE);
+                                const pageStart = reflectionPage * REFLECTIONS_PAGE_SIZE;
+                                const visibleSessions = reflectionSessions.slice(pageStart, pageStart + REFLECTIONS_PAGE_SIZE);
                                 return (
                                     <div className="card" style={{ padding: '16px' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
@@ -2317,7 +2319,6 @@ function AgentDetailInner() {
                                                                     return;
                                                                 }
                                                                 setExpandedReflection(session.id);
-                                                                // Load messages if not cached
                                                                 if (!reflectionMessages[session.id]) {
                                                                     try {
                                                                         const tkn = localStorage.getItem('token');
@@ -2491,17 +2492,29 @@ function AgentDetailInner() {
                                                 );
                                             })}
                                         </div>
-                                        {reflectionSessions.length > SECTION_PAGE_SIZE && (
-                                            <button
-                                                onClick={(e) => { const collapse = showAllReflections; setShowAllReflections(!showAllReflections); if (collapse) e.currentTarget.closest('.card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}
-                                                className="btn btn-ghost"
-                                                style={{ width: '100%', fontSize: '12px', color: 'var(--text-tertiary)', padding: '8px', marginTop: '4px' }}
-                                            >
-                                                {showAllReflections
-                                                    ? (i18n.language?.startsWith('zh') ? '收起' : 'Show less')
-                                                    : (i18n.language?.startsWith('zh') ? `显示更多 ${hiddenCount} 条...` : `Show ${hiddenCount} more...`)
-                                                }
-                                            </button>
+                                        {/* Pagination controls */}
+                                        {totalPages > 1 && (
+                                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginTop: '12px', paddingTop: '8px', borderTop: '1px solid var(--border-subtle)' }}>
+                                                <button
+                                                    onClick={() => { setReflectionPage(p => Math.max(0, p - 1)); setExpandedReflection(null); }}
+                                                    disabled={reflectionPage === 0}
+                                                    className="btn btn-ghost"
+                                                    style={{ fontSize: '12px', padding: '4px 10px', opacity: reflectionPage === 0 ? 0.3 : 1 }}
+                                                >
+                                                    {i18n.language?.startsWith('zh') ? '上一页' : 'Prev'}
+                                                </button>
+                                                <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
+                                                    {reflectionPage + 1} / {totalPages}
+                                                </span>
+                                                <button
+                                                    onClick={() => { setReflectionPage(p => Math.min(totalPages - 1, p + 1)); setExpandedReflection(null); }}
+                                                    disabled={reflectionPage >= totalPages - 1}
+                                                    className="btn btn-ghost"
+                                                    style={{ fontSize: '12px', padding: '4px 10px', opacity: reflectionPage >= totalPages - 1 ? 0.3 : 1 }}
+                                                >
+                                                    {i18n.language?.startsWith('zh') ? '下一页' : 'Next'}
+                                                </button>
+                                            </div>
                                         )}
                                     </div>
                                 );
