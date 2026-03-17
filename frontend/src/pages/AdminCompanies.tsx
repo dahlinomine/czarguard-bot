@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { adminApi } from '../services/api';
 import { useAuthStore } from '../stores';
+import { saveAccentColor, getSavedAccentColor } from '../utils/theme';
 
 // Format large token numbers with K/M/B suffixes
 function formatTokens(n: number | null | undefined): string {
@@ -48,6 +49,12 @@ export default function AdminCompanies() {
     const [creating, setCreating] = useState(false);
     const [createdCode, setCreatedCode] = useState('');
 
+    // Notification bar
+    const [nbEnabled, setNbEnabled] = useState(false);
+    const [nbText, setNbText] = useState('');
+    const [nbSaving, setNbSaving] = useState(false);
+    const [nbSaved, setNbSaved] = useState(false);
+
     // Toast
     const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
     const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
@@ -73,9 +80,39 @@ export default function AdminCompanies() {
         } catch { }
     };
 
+    const loadNotificationBar = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch('/api/enterprise/system-settings/notification_bar', {
+                headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+            });
+            const d = await res.json();
+            if (d?.value) {
+                setNbEnabled(!!d.value.enabled);
+                setNbText(d.value.text || '');
+            }
+        } catch { }
+    };
+
+    const saveNotificationBar = async () => {
+        setNbSaving(true);
+        try {
+            const token = localStorage.getItem('token');
+            await fetch('/api/enterprise/system-settings/notification_bar', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+                body: JSON.stringify({ value: { enabled: nbEnabled, text: nbText } }),
+            });
+            setNbSaved(true);
+            setTimeout(() => setNbSaved(false), 2000);
+        } catch { }
+        setNbSaving(false);
+    };
+
     useEffect(() => {
         loadCompanies();
         loadSettings();
+        loadNotificationBar();
     }, []);
 
     // Guard: only platform_admin
@@ -219,7 +256,6 @@ export default function AdminCompanies() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {[
                         { key: 'allow_self_create_company', label: t('admin.allowSelfCreate', 'Allow users to create their own companies'), desc: t('admin.allowSelfCreateDesc', 'When disabled, only platform admins can create companies.') },
-                        { key: 'invitation_code_enabled', label: t('admin.inviteCodeRequired', 'Require invitation code for registration'), desc: t('admin.inviteCodeRequiredDesc', 'When enabled, new users must provide a valid invitation code to register.') },
                     ].map(s => (
                         <div key={s.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0' }}>
                             <div>
@@ -235,6 +271,43 @@ export default function AdminCompanies() {
                             </label>
                         </div>
                     ))}
+                </div>
+            </div>
+
+            {/* Notification Bar Config (platform-wide) */}
+            <div className="card" style={{ padding: '16px', marginBottom: '16px' }}>
+                <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '4px', color: 'var(--text-secondary)' }}>
+                    {t('enterprise.notificationBar.title', 'Notification Bar')}
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginBottom: '12px' }}>
+                    {t('enterprise.notificationBar.description', 'Display a notification bar at the top of the page, visible to all users.')}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }}>
+                        <input
+                            type="checkbox"
+                            checked={nbEnabled}
+                            onChange={e => setNbEnabled(e.target.checked)}
+                            style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                        />
+                        {t('enterprise.notificationBar.enabled', 'Enable notification bar')}
+                    </label>
+                </div>
+                <div style={{ marginBottom: '12px' }}>
+                    <label className="form-label">{t('enterprise.notificationBar.text', 'Notification text')}</label>
+                    <input
+                        className="form-input"
+                        value={nbText}
+                        onChange={e => setNbText(e.target.value)}
+                        placeholder={t('enterprise.notificationBar.textPlaceholder', 'e.g. v2.1 released with new features!')}
+                        style={{ fontSize: '13px' }}
+                    />
+                </div>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <button className="btn btn-primary" onClick={saveNotificationBar} disabled={nbSaving}>
+                        {nbSaving ? t('common.loading') : t('common.save', 'Save')}
+                    </button>
+                    {nbSaved && <span style={{ color: 'var(--success)', fontSize: '12px' }}>{t('enterprise.config.saved', 'Saved')}</span>}
                 </div>
             </div>
 
