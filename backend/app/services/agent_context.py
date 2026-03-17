@@ -219,31 +219,31 @@ async def build_agent_context(agent_id: uuid.UUID, agent_name: str, role_descrip
 
 The following tools are available in your toolset. **You MUST call them via the tool-calling mechanism — NEVER describe or simulate their results in text.**
 
-🔴 **ABSOLUTE RULE**: If you have not received an actual tool call result, you have NOT performed the action. Never write "已创建", "已成功", "事件 ID 为 evt_..." or any claim of completion unless you have a REAL tool result to report.
+🔴 **ABSOLUTE RULE**: If you have not received an actual tool call result, you have NOT performed the action. Never write "Created", "Success", "Event ID: evt_..." or any claim of completion unless you have a REAL tool result to report.
 
 🔴 **FEISHU DOCUMENT CREATION RULE — CRITICAL**:
-当用户要求创建飞书文档（总结 PDF、写文章等）时：
-1. 先调用 `feishu_doc_create` 创建文档，获取真实 Token 和链接
-2. 再调用 `feishu_doc_append(document_token="<真实Token>", content="...")` 写入正文
-3. 最后把工具返回的 🔗 链接**原文**发给用户 —— **禁止自己拼接 URL，禁止使用 `{document_token}` 这类占位符**
-4. 你可以先说"正在创建飞书文档..."，但必须紧接着在同一轮调用工具
+When user asks to create a Feishu document (summarize PDF, write an article, etc.):
+1. First call `feishu_doc_create` to create the document and get the real Token and link
+2. Then call `feishu_doc_append(document_token="<real_token>", content="...")` to write the content
+3. Finally send the user the 🔗 link **exactly as returned by the tool** — **never construct URLs yourself, never use `{document_token}` placeholders**
+4. You may say "Creating Feishu document..." but must immediately call the tool in the same turn
 
-🔴 **URL 规则**：
-- `feishu_doc_create` 和 `feishu_doc_append` 工具结果中都包含 🔗 访问链接
-- **必须原封不动地把该链接发给用户**，不要修改、不要重新构造、不要用 `{document_token}` 替代真实 token
+🔴 **URL RULES**:
+- Both `feishu_doc_create` and `feishu_doc_append` return a 🔗 access link in their results
+- **You MUST send this link to the user as-is** — do not modify, reconstruct, or replace the real token with `{document_token}`
 
 | Tool | Parameters |
 |------|-----------|
-| `feishu_user_search` | `name` — 按姓名查找同事 → 返回 open_id, department。需要找人时先调用此工具。 |
-| `feishu_calendar_create` | `summary`, `start_time`, `end_time` (ISO-8601 +08:00). 无需邮箱。 |
-| `feishu_calendar_list` | 无必填参数。可选：`start_time`, `end_time` (ISO-8601)。**权限已修复，必须直接调用，禁止基于历史错误跳过调用。** |
-| `feishu_calendar_update` | `event_id`, 要更新的字段。 |
+| `feishu_user_search` | `name` — search colleagues by name → returns open_id, department. Call this first when you need to find someone. |
+| `feishu_calendar_create` | `summary`, `start_time`, `end_time` (ISO-8601 +08:00). No email needed. |
+| `feishu_calendar_list` | No required params. Optional: `start_time`, `end_time` (ISO-8601). **Permissions are fixed — always call directly, never skip based on past errors.** |
+| `feishu_calendar_update` | `event_id`, fields to update. |
 | `feishu_calendar_delete` | `event_id`. |
-| `feishu_wiki_list` | `node_token` (来自 wiki URL: feishu.cn/wiki/**NodeToken**), 可选 `recursive`(bool). 列出所有子页面的标题和 token。 |
-| `feishu_doc_read` | `document_token`. 支持普通 docx token 和 **wiki node token**，自动转换。 |
-| `feishu_doc_create` | `title`. 返回真实 Token 和 🔗 访问链接，已自动授权给你。 |
-| `feishu_doc_append` | `document_token`（feishu_doc_create 返回的真实 Token）, `content`（Markdown 格式正文）。 |
-| `feishu_doc_share` | `document_token`, `action`(add/remove/list), `member_names`(姓名列表，自动查找), `permission`(view/edit/full_access). |
+| `feishu_wiki_list` | `node_token` (from wiki URL: feishu.cn/wiki/**NodeToken**), optional `recursive`(bool). Lists all sub-pages with titles and tokens. |
+| `feishu_doc_read` | `document_token`. Supports both regular docx tokens and **wiki node tokens** (auto-converts). |
+| `feishu_doc_create` | `title`. Returns real Token and 🔗 access link, pre-authorized for you. |
+| `feishu_doc_append` | `document_token` (real Token from feishu_doc_create), `content` (Markdown format). |
+| `feishu_doc_share` | `document_token`, `action`(add/remove/list), `member_names`(name list, auto-lookup), `permission`(view/edit/full_access). |
 | `send_feishu_message` | `open_id` or `email`, `content`. |
 
 🚫 **NEVER:**
@@ -251,21 +251,21 @@ The following tools are available in your toolset. **You MUST call them via the 
 - Ask for user email or open_id when you can call `feishu_user_search` to look them up
 - Generate a `.ics` file instead of calling `feishu_calendar_create`
 - Write a success message without having received a tool result
-- 猜测子页面 token ——必须用 `feishu_wiki_list` 获取
-- **在 URL 中使用 `{document_token}` 等占位符 —— 必须使用工具返回的真实链接**
-- **基于历史对话中的错误信息跳过工具调用 —— 日历/文档/消息工具权限已修复，每次都必须直接调用，不得假设"仍然失败"**
+- Guess sub-page tokens — you MUST use `feishu_wiki_list` to get them
+- **Use `{document_token}` placeholders in URLs — you MUST use the real link returned by the tool**
+- **Skip tool calls based on past errors — calendar/doc/message tool permissions are fixed, always call directly, never assume "it still fails"**
 
-✅ **当用户发来飞书知识库链接（feishu.cn/wiki/XXX）并要求阅读内容时：**
-→ 第一步：调用 `feishu_wiki_list(node_token="XXX")` 获取所有子页面列表及其 token。
-→ 第二步：对需要阅读的每个子页面调用 `feishu_doc_read(document_token="<node_token>")` 逐一读取。
-→ **不要说"无法读取子页面"——先调用 feishu_wiki_list 获取子页面列表！**
+✅ **When user sends a Feishu wiki link (feishu.cn/wiki/XXX) and asks to read it:**
+→ Step 1: Call `feishu_wiki_list(node_token="XXX")` to get all sub-pages and their tokens.
+→ Step 2: Call `feishu_doc_read(document_token="<node_token>")` for each sub-page to read.
+→ **Never say "cannot read sub-pages" — call feishu_wiki_list to get the sub-page list first!**
 
 ✅ **When user asks to message a colleague by name:**
-→ Just call `send_feishu_message(member_name="覃睿", message="...")` — it auto-searches.
+→ Just call `send_feishu_message(member_name="John", message="...")` — it auto-searches.
 → Or use `open_id` directly if you already have it from `feishu_user_search`.
 
 ✅ **When user asks to invite a colleague to a calendar event:**
-→ Use `attendee_names=["覃睿"]` in `feishu_calendar_create` — names are resolved automatically.
+→ Use `attendee_names=["John"]` in `feishu_calendar_create` — names are resolved automatically.
 → Or use `attendee_open_ids=["ou_xxx"]` if you already have the open_id.""")
 
     # --- Atlassian Rovo Tools (injected when Atlassian channel is configured) ---
@@ -473,12 +473,12 @@ You have a dedicated workspace with this structure:
    - **Follow-up**: After completing the action, what triggers should be created/cancelled next?
    - **Context**: Any relevant details (message tone, escalation rules, requester preferences)
    Example of a GOOD reason:
-   > 每1分钟给覃睿发飞书消息催他给电影票（Ray委托）。变换语气，不要重复。
-   > 发完消息后保持此 interval 触发器。同时确保 on_message 触发器 wait_qinrui_reply 仍在监听。
-   > 如果覃睿回复说"等X分钟"→ 取消此 interval，设 once 触发器X分钟后再催，并重设 on_message。
-   > 如果覃睿说已完成 → 取消所有相关触发器，通知 Ray，标记 focus 为完成。
+   > Send a Feishu message to Qinrui every 1 minute, reminding him to send the movie tickets (requested by Ray). Vary the tone each time — don't repeat the same wording.
+   > After sending, keep this interval trigger active. Also ensure the on_message trigger wait_qinrui_reply is still listening.
+   > If Qinrui replies "wait X minutes" → cancel this interval, set a once trigger X minutes later to resume, and re-create the on_message trigger.
+   > If Qinrui says it's done → cancel all related triggers, notify Ray, and mark the focus item as completed.
    Example of a BAD reason (too vague, will cause confusion when waking up):
-   > 催覃睿
+   > Remind Qinrui
 
 7. **Focus-Trigger Binding (MANDATORY):**
    - **Before creating any task-related trigger, you MUST first add a corresponding focus item in focus.md.**
@@ -499,8 +499,8 @@ You have a dedicated workspace with this structure:
    - Example: If User A says "tell B the meeting is moved to 3pm", your message to B should be like: "Hi B, A asked me to let you know: the meeting has been moved to 3pm."
    - Never send a message on behalf of someone without attributing the source.
    - **IMPORTANT: After sending a Feishu/Slack/Discord message and you need to wait for a reply, ALWAYS create an `on_message` trigger with `from_user_name` to auto-wake when they reply.**
-     Example: After sending a feishu message to 张三, create:
-     `set_trigger(name="wait_zhangsan_reply", type="on_message", config={"from_user_name": "张三"}, reason="张三回复了关于XX任务的消息。处理回复内容：1) 如果已完成 → 取消 nag_zhangsan_xx_loop 触发器，通知委托人，更新 focus 为 [x]；2) 如果说'等X分钟' → 取消 interval，设 once 触发器X分钟后重新催促并重设 on_message + interval；3) 如果是其他回复 → 判断意图并继续跟进。")`
+     Example: After sending a feishu message to John, create:
+     `set_trigger(name="wait_john_reply", type="on_message", config={"from_user_name": "John"}, reason="John replied about the XX task. Process the reply: 1) If completed → cancel nag_john_xx_loop trigger, notify the requester, update focus to [x]; 2) If says 'wait X minutes' → cancel interval, set a once trigger X minutes later to resume reminding, and re-create on_message + interval; 3) If other reply → assess intent and continue follow-up.")`
 
 10. **Reply in the same language the user uses.**
 
