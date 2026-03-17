@@ -843,8 +843,39 @@ export default function EnterpriseSettings() {
                                         <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>Override the default output token limit. Auto-filled from provider; adjust as needed.</div>
                                     </div>
                                 </div>
-                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
                                     <button className="btn btn-secondary" onClick={() => { setShowAddModel(false); setEditingModelId(null); }}>{t('common.cancel')}</button>
+                                    <button className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }} disabled={!modelForm.model || (!editingModelId && !modelForm.api_key)} onClick={async () => {
+                                        const btn = document.activeElement as HTMLButtonElement;
+                                        const origText = btn?.textContent || '';
+                                        if (btn) btn.textContent = 'Testing...';
+                                        try {
+                                            const token = localStorage.getItem('token');
+                                            const testData: any = { provider: modelForm.provider, model: modelForm.model, api_key: modelForm.api_key, base_url: modelForm.base_url || undefined };
+                                            // For editing: if no new api_key, we can't test (need the key)
+                                            if (editingModelId && !modelForm.api_key) {
+                                                alert(t('enterprise.llm.testNeedKey', 'Please enter the API Key to test the connection.'));
+                                                if (btn) btn.textContent = origText;
+                                                return;
+                                            }
+                                            const res = await fetch('/api/enterprise/llm-test', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                                                body: JSON.stringify(testData),
+                                            });
+                                            const result = await res.json();
+                                            if (result.success) {
+                                                if (btn) { btn.textContent = `OK (${result.latency_ms}ms)`; btn.style.color = 'var(--success)'; }
+                                                setTimeout(() => { if (btn) { btn.textContent = origText; btn.style.color = ''; } }, 3000);
+                                            } else {
+                                                alert(`Test failed: ${result.error || 'Unknown error'}\n\nLatency: ${result.latency_ms}ms`);
+                                                if (btn) btn.textContent = origText;
+                                            }
+                                        } catch (e: any) {
+                                            alert(`Test error: ${e.message}`);
+                                            if (btn) btn.textContent = origText;
+                                        }
+                                    }}>Test</button>
                                     <button className="btn btn-primary" onClick={() => {
                                         if (editingModelId) {
                                             const data = { ...modelForm, max_output_tokens: modelForm.max_output_tokens ? Number(modelForm.max_output_tokens) : null };

@@ -34,6 +34,44 @@ async def list_llm_providers(
     return get_provider_manifest()
 
 
+class LLMTestRequest(BaseModel):
+    provider: str
+    model: str
+    api_key: str
+    base_url: str | None = None
+
+
+@router.post("/llm-test")
+async def test_llm_model(
+    data: LLMTestRequest,
+    current_user: User = Depends(get_current_admin),
+):
+    """Test an LLM model configuration by making a simple API call."""
+    import time
+    from app.services.llm_client import create_llm_client
+
+    start = time.time()
+    try:
+        client = create_llm_client(
+            provider=data.provider,
+            model=data.model,
+            api_key=data.api_key,
+            base_url=data.base_url or None,
+        )
+        # Simple test: ask model to say "ok"
+        response = await client.complete(
+            messages=[{"role": "user", "content": "Say 'ok' and nothing else."}],
+            max_tokens=16,
+        )
+        latency_ms = int((time.time() - start) * 1000)
+        reply = (response.content or "")[:100] if response else ""
+        return {"success": True, "latency_ms": latency_ms, "reply": reply}
+    except Exception as e:
+        latency_ms = int((time.time() - start) * 1000)
+        return {"success": False, "latency_ms": latency_ms, "error": str(e)[:500]}
+
+
+
 @router.get("/llm-models", response_model=list[LLMModelOut])
 async def list_llm_models(
     tenant_id: str | None = None,
