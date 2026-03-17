@@ -1692,6 +1692,27 @@ PROVIDER_REGISTRY: dict[str, ProviderSpec] = {
         default_base_url="https://api.moonshot.cn/v1",
         default_max_tokens=8192,
     ),
+    "vllm": ProviderSpec(
+        provider="vllm",
+        display_name="vLLM",
+        protocol="openai_compatible",
+        default_base_url="http://localhost:8000/v1",
+        default_max_tokens=4096,
+    ),
+    "ollama": ProviderSpec(
+        provider="ollama",
+        display_name="Ollama",
+        protocol="openai_compatible",
+        default_base_url="http://localhost:11434/v1",
+        default_max_tokens=4096,
+    ),
+    "sglang": ProviderSpec(
+        provider="sglang",
+        display_name="SGLang",
+        protocol="openai_compatible",
+        default_base_url="http://localhost:30000/v1",
+        default_max_tokens=4096,
+    ),
     "custom": ProviderSpec(
         provider="custom",
         display_name="Custom",
