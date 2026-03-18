@@ -369,7 +369,7 @@ export const skillApi = {
         request<void>(`/skills/${id}`, { method: 'DELETE' }),
     // Path-based browse for FileBrowser
     browse: {
-        list: (path: string) => request<any[]>(`/skills/browse/list?path=${encodeURIComponent(path)}`),
+        list: (path: string, tenantId?: string) => request<any[]>(`/skills/browse/list?path=${encodeURIComponent(path)}${tenantId ? `&tenant_id=${tenantId}` : ''}`),
         read: (path: string) => request<{ content: string }>(`/skills/browse/read?path=${encodeURIComponent(path)}`),
         write: (path: string, content: string) =>
             request<any>('/skills/browse/write', { method: 'PUT', body: JSON.stringify({ path, content }) }),
@@ -386,6 +386,19 @@ export const skillApi = {
         request<any>('/skills/import-from-url', { method: 'POST', body: JSON.stringify({ url }) }),
     previewUrl: (url: string) =>
         request<any>('/skills/import-from-url/preview', { method: 'POST', body: JSON.stringify({ url }) }),
+    // Tenant-level settings
+    settings: {
+        getToken: () => request<{ configured: boolean; source: string; masked: string }>('/skills/settings/token'),
+        setToken: (github_token: string) =>
+            request<any>('/skills/settings/token', { method: 'PUT', body: JSON.stringify({ github_token }) }),
+    },
+    // Agent-level import (writes to agent workspace)
+    agentImport: {
+        fromClawhub: (agentId: string, slug: string) =>
+            request<any>(`/agents/${agentId}/files/import-from-clawhub`, { method: 'POST', body: JSON.stringify({ slug }) }),
+        fromUrl: (agentId: string, url: string) =>
+            request<any>(`/agents/${agentId}/files/import-from-url`, { method: 'POST', body: JSON.stringify({ url }) }),
+    },
 };
 
 // ─── Triggers (Aware Engine) ──────────────────────────

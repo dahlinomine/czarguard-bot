@@ -302,12 +302,12 @@ async def upload_file_to_workspace(
 enterprise_kb_router = APIRouter(prefix="/enterprise/knowledge-base", tags=["enterprise"])
 
 
-def _enterprise_kb_dir() -> Path:
-    return Path(settings.AGENT_DATA_DIR) / "enterprise_info" / "knowledge_base"
+def _enterprise_kb_dir(tenant_id: str) -> Path:
+    return Path(settings.AGENT_DATA_DIR) / f"enterprise_info_{tenant_id}" / "knowledge_base"
 
 
-def _enterprise_info_dir() -> Path:
-    return Path(settings.AGENT_DATA_DIR) / "enterprise_info"
+def _enterprise_info_dir(tenant_id: str) -> Path:
+    return Path(settings.AGENT_DATA_DIR) / f"enterprise_info_{tenant_id}"
 
 
 @enterprise_kb_router.get("/files")
@@ -315,8 +315,10 @@ async def list_enterprise_kb_files(
     path: str = "",
     current_user: User = Depends(get_current_user),
 ):
-    """List files in enterprise knowledge base."""
-    info_dir = _enterprise_info_dir().resolve()
+    """List files in enterprise knowledge base (tenant-scoped)."""
+    if not current_user.tenant_id:
+        return []
+    info_dir = _enterprise_info_dir(str(current_user.tenant_id)).resolve()
     info_dir.mkdir(parents=True, exist_ok=True)
 
     if path:
@@ -350,13 +352,15 @@ async def upload_enterprise_kb_file(
     sub_path: str = "",
     current_user: User = Depends(get_current_user),
 ):
-    """Upload a file to enterprise knowledge base."""
+    """Upload a file to enterprise knowledge base (tenant-scoped)."""
     from app.core.security import require_role
     # Only admin can upload to enterprise KB
     if current_user.role not in ("platform_admin", "org_admin"):
-        raise HTTPException(status_code=403, detail="仅管理员可上传企业知识库文件")
+        raise HTTPException(status_code=403, detail="Only admins can upload to enterprise knowledge base")
+    if not current_user.tenant_id:
+        raise HTTPException(status_code=400, detail="No tenant associated")
 
-    info_dir = _enterprise_info_dir()
+    info_dir = _enterprise_info_dir(str(current_user.tenant_id))
     target_dir = (info_dir / sub_path).resolve()
     if not str(target_dir).startswith(str(info_dir.resolve())):
         raise HTTPException(status_code=403, detail="Path traversal not allowed")
@@ -391,8 +395,10 @@ async def read_enterprise_file(
     path: str,
     current_user: User = Depends(get_current_user),
 ):
-    """Read content of an enterprise knowledge base file."""
-    info_dir = _enterprise_info_dir()
+    """Read content of an enterprise knowledge base file (tenant-scoped)."""
+    if not current_user.tenant_id:
+        raise HTTPException(status_code=400, detail="No tenant associated")
+    info_dir = _enterprise_info_dir(str(current_user.tenant_id))
     target = (info_dir / path).resolve()
     if not str(target).startswith(str(info_dir.resolve())):
         raise HTTPException(status_code=403, detail="Path traversal not allowed")
@@ -412,11 +418,13 @@ async def write_enterprise_file(
     data: FileWrite,
     current_user: User = Depends(get_current_user),
 ):
-    """Write content to an enterprise file."""
+    """Write content to an enterprise file (tenant-scoped)."""
     if current_user.role not in ("platform_admin", "org_admin"):
-        raise HTTPException(status_code=403, detail="仅管理员可编辑企业知识库文件")
+        raise HTTPException(status_code=403, detail="Only admins can edit enterprise knowledge base")
+    if not current_user.tenant_id:
+        raise HTTPException(status_code=400, detail="No tenant associated")
 
-    info_dir = _enterprise_info_dir()
+    info_dir = _enterprise_info_dir(str(current_user.tenant_id))
     target = (info_dir / path).resolve()
     if not str(target).startswith(str(info_dir.resolve())):
         raise HTTPException(status_code=403, detail="Path traversal not allowed")
@@ -432,11 +440,13 @@ async def delete_enterprise_file(
     path: str,
     current_user: User = Depends(get_current_user),
 ):
-    """Delete an enterprise knowledge base file."""
+    """Delete an enterprise knowledge base file (tenant-scoped)."""
     if current_user.role not in ("platform_admin", "org_admin"):
-        raise HTTPException(status_code=403, detail="仅管理员可删除企业知识库文件")
+        raise HTTPException(status_code=403, detail="Only admins can delete enterprise knowledge base files")
+    if not current_user.tenant_id:
+        raise HTTPException(status_code=400, detail="No tenant associated")
 
-    info_dir = _enterprise_info_dir()
+    info_dir = _enterprise_info_dir(str(current_user.tenant_id))
     target = (info_dir / path).resolve()
     if not str(target).startswith(str(info_dir.resolve())):
         raise HTTPException(status_code=403, detail="Path traversal not allowed")
@@ -450,3 +460,126 @@ async def delete_enterprise_file(
         target.unlink()
     return {"status": "ok", "path": path}
 
+
+# ─── Agent-level ClawHub / URL Skill Import ─────────────────
+
+class ClawhubImportBody(BaseModel):
+    slug: str
+
+class UrlImportBody(BaseModel):
+    url: str
+
+
+@router.post("/import-from-clawhub")
+async def agent_import_from_clawhub(
+    agent_id: uuid.UUID,
+    body: ClawhubImportBody,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Import a skill from ClawHub directly into this agent's skills/ workspace."""
+    await check_agent_access(db, current_user, agent_id)
+
+    from app.api.skills import (
+        CLAWHUB_BASE, _fetch_github_directory, _parse_skill_md_frontmatter, _get_github_token,
+    )
+    import httpx
+
+    slug = body.slug
+
+    # 1. Fetch metadata from ClawHub
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(f"{CLAWHUB_BASE}/v1/skills/{slug}")
+            if resp.status_code == 429:
+                raise HTTPException(429, "ClawHub rate limit exceeded. Please wait and try again.")
+            if resp.status_code != 200:
+                raise HTTPException(502, f"ClawHub API error: {resp.status_code}")
+            meta = resp.json()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(502, f"Failed to connect to ClawHub: {e}")
+
+    skill_info = meta.get("skill", {})
+    owner_info = meta.get("owner", {})
+    handle = owner_info.get("handle", "").lower()
+    if not handle:
+        raise HTTPException(400, "Could not determine skill owner from ClawHub metadata")
+
+    # 2. Fetch files from GitHub
+    github_path = f"skills/{handle}/{slug}"
+    tenant_id = str(current_user.tenant_id) if current_user.tenant_id else None
+    token = await _get_github_token(tenant_id)
+    files = await _fetch_github_directory("openclaw", "skills", github_path, "main", token)
+
+    # 3. Write to agent workspace: skills/<slug>/
+    base = _agent_base_dir(agent_id)
+    folder_name = slug
+    skill_dir = base / "skills" / folder_name
+    skill_dir.mkdir(parents=True, exist_ok=True)
+
+    written = []
+    for f in files:
+        file_path = (skill_dir / f["path"]).resolve()
+        if not str(file_path).startswith(str(base.resolve())):
+            continue
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file_path.write_text(f["content"], encoding="utf-8")
+        written.append(f["path"])
+
+    return {
+        "status": "ok",
+        "skill_name": skill_info.get("displayName", slug),
+        "folder_name": folder_name,
+        "files_written": len(written),
+        "files": written,
+    }
+
+
+@router.post("/import-from-url")
+async def agent_import_from_url(
+    agent_id: uuid.UUID,
+    body: UrlImportBody,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Import a skill from a GitHub URL directly into this agent's skills/ workspace."""
+    await check_agent_access(db, current_user, agent_id)
+
+    from app.api.skills import _parse_github_url, _fetch_github_directory, _get_github_token
+
+    parsed = _parse_github_url(body.url)
+    if not parsed:
+        raise HTTPException(400, "Invalid GitHub URL")
+
+    owner, repo, branch, path = parsed["owner"], parsed["repo"], parsed["branch"], parsed["path"]
+    tenant_id = str(current_user.tenant_id) if current_user.tenant_id else None
+    token = await _get_github_token(tenant_id)
+    files = await _fetch_github_directory(owner, repo, path, branch, token)
+    if not files:
+        raise HTTPException(404, "No files found")
+
+    # Derive folder name
+    folder_name = path.rstrip("/").split("/")[-1] if path else repo
+
+    # Write to agent workspace
+    base = _agent_base_dir(agent_id)
+    skill_dir = base / "skills" / folder_name
+    skill_dir.mkdir(parents=True, exist_ok=True)
+
+    written = []
+    for f in files:
+        file_path = (skill_dir / f["path"]).resolve()
+        if not str(file_path).startswith(str(base.resolve())):
+            continue
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file_path.write_text(f["content"], encoding="utf-8")
+        written.append(f["path"])
+
+    return {
+        "status": "ok",
+        "folder_name": folder_name,
+        "files_written": len(written),
+        "files": written,
+    }

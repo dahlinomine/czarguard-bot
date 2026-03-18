@@ -927,7 +927,7 @@ async def get_agent_tools_for_llm(agent_id: uuid.UUID) -> list[dict]:
 
 # ─── Workspace initialization ──────────────────────────────────
 
-async def ensure_workspace(agent_id: uuid.UUID) -> Path:
+async def ensure_workspace(agent_id: uuid.UUID, tenant_id: str | None = None) -> Path:
     """Initialize agent workspace with standard structure."""
     ws = WORKSPACE_ROOT / str(agent_id)
     ws.mkdir(parents=True, exist_ok=True)
@@ -938,8 +938,11 @@ async def ensure_workspace(agent_id: uuid.UUID) -> Path:
     (ws / "workspace" / "knowledge_base").mkdir(exist_ok=True)
     (ws / "memory").mkdir(exist_ok=True)
 
-    # Ensure shared enterprise_info directory exists
-    enterprise_dir = WORKSPACE_ROOT / "enterprise_info"
+    # Ensure tenant-scoped enterprise_info directory exists
+    if tenant_id:
+        enterprise_dir = WORKSPACE_ROOT / f"enterprise_info_{tenant_id}"
+    else:
+        enterprise_dir = WORKSPACE_ROOT / "enterprise_info"
     enterprise_dir.mkdir(parents=True, exist_ok=True)
     (enterprise_dir / "knowledge_base").mkdir(exist_ok=True)
     # Create default company profile if missing
@@ -1063,7 +1066,21 @@ async def execute_tool(
     user_id: uuid.UUID,
 ) -> str:
     """Execute a tool call and return the result as a string."""
-    ws = await ensure_workspace(agent_id)
+    # Look up agent's tenant_id for tenant-scoped operations
+    _agent_tenant_id = None
+    try:
+        from app.models.agent import Agent as _Ag
+        from app.database import async_session as _ases
+        from sqlalchemy import select as _ssel
+        async with _ases() as _tdb:
+            _ag = await _tdb.execute(_ssel(_Ag.tenant_id).where(_Ag.id == agent_id))
+            _tid = _ag.scalar_one_or_none()
+            if _tid:
+                _agent_tenant_id = str(_tid)
+    except Exception:
+        pass
+
+    ws = await ensure_workspace(agent_id, tenant_id=_agent_tenant_id)
 
     # ── Autonomy boundary check ──
     action_type = _TOOL_AUTONOMY_MAP.get(tool_name)
@@ -1090,18 +1107,18 @@ async def execute_tool(
 
     try:
         if tool_name == "list_files":
-            result = _list_files(ws, arguments.get("path", ""))
+            result = _list_files(ws, arguments.get("path", ""), tenant_id=_agent_tenant_id)
         elif tool_name == "read_file":
             path = arguments.get("path")
             if not path:
                 return "❌ Missing required argument 'path' for read_file"
-            result = _read_file(ws, path)
+            result = _read_file(ws, path, tenant_id=_agent_tenant_id)
         elif tool_name == "read_document":
             path = arguments.get("path")
             if not path:
                 return "❌ Missing required argument 'path' for read_document"
             max_chars = min(int(arguments.get("max_chars", 8000)), 20000)
-            result = await _read_document(ws, path, max_chars=max_chars)
+            result = await _read_document(ws, path, max_chars=max_chars, tenant_id=_agent_tenant_id)
         elif tool_name == "write_file":
             path = arguments.get("path")
             content = arguments.get("content")
@@ -1746,11 +1763,16 @@ async def _smithery_auto_recover(api_key: str, mcp_url: str, namespace: str, con
         return f"❌ Auto-recovery failed: {str(e)[:200]}"
 
 
-def _list_files(ws: Path, rel_path: str) -> str:
-    # Handle enterprise_info/ as shared directory
+def _list_files(ws: Path, rel_path: str, tenant_id: str | None = None) -> str:
+    # Handle enterprise_info/ as shared directory (tenant-scoped)
     if rel_path and rel_path.startswith("enterprise_info"):
-        target = (WORKSPACE_ROOT / rel_path).resolve()
-        enterprise_root = (WORKSPACE_ROOT / "enterprise_info").resolve()
+        if tenant_id:
+            enterprise_root = (WORKSPACE_ROOT / f"enterprise_info_{tenant_id}").resolve()
+        else:
+            enterprise_root = (WORKSPACE_ROOT / "enterprise_info").resolve()
+        # Remap: enterprise_info/... → enterprise_info_{tenant_id}/...
+        sub = rel_path[len("enterprise_info"):].lstrip("/")
+        target = (enterprise_root / sub).resolve() if sub else enterprise_root
         if not str(target).startswith(str(enterprise_root)):
             return "Access denied for this path"
     else:
@@ -1765,7 +1787,10 @@ def _list_files(ws: Path, rel_path: str) -> str:
     items = []
     # If listing root, also show enterprise_info entry
     if not rel_path:
-        enterprise_dir = WORKSPACE_ROOT / "enterprise_info"
+        if tenant_id:
+            enterprise_dir = WORKSPACE_ROOT / f"enterprise_info_{tenant_id}"
+        else:
+            enterprise_dir = WORKSPACE_ROOT / "enterprise_info"
         if enterprise_dir.exists():
             items.append("  📁 enterprise_info/ (shared company info)")
 
@@ -1794,11 +1819,15 @@ def _list_files(ws: Path, rel_path: str) -> str:
     return header + "\n".join(items)
 
 
-def _read_file(ws: Path, rel_path: str) -> str:
-    # Handle enterprise_info/ as shared directory
+def _read_file(ws: Path, rel_path: str, tenant_id: str | None = None) -> str:
+    # Handle enterprise_info/ as shared directory (tenant-scoped)
     if rel_path and rel_path.startswith("enterprise_info"):
-        file_path = (WORKSPACE_ROOT / rel_path).resolve()
-        enterprise_root = (WORKSPACE_ROOT / "enterprise_info").resolve()
+        if tenant_id:
+            enterprise_root = (WORKSPACE_ROOT / f"enterprise_info_{tenant_id}").resolve()
+        else:
+            enterprise_root = (WORKSPACE_ROOT / "enterprise_info").resolve()
+        sub = rel_path[len("enterprise_info"):].lstrip("/")
+        file_path = (enterprise_root / sub).resolve() if sub else enterprise_root
         if not str(file_path).startswith(str(enterprise_root)):
             return "Access denied for this path"
     else:
@@ -1818,12 +1847,16 @@ def _read_file(ws: Path, rel_path: str) -> str:
         return f"Read failed: {e}"
 
 
-async def _read_document(ws: Path, rel_path: str, max_chars: int = 8000) -> str:
+async def _read_document(ws: Path, rel_path: str, max_chars: int = 8000, tenant_id: str | None = None) -> str:
     """Read content from office documents (PDF, DOCX, XLSX, PPTX)."""
-    # Handle enterprise_info/ as shared directory
+    # Handle enterprise_info/ as shared directory (tenant-scoped)
     if rel_path and rel_path.startswith("enterprise_info"):
-        file_path = (WORKSPACE_ROOT / rel_path).resolve()
-        enterprise_root = (WORKSPACE_ROOT / "enterprise_info").resolve()
+        if tenant_id:
+            enterprise_root = (WORKSPACE_ROOT / f"enterprise_info_{tenant_id}").resolve()
+        else:
+            enterprise_root = (WORKSPACE_ROOT / "enterprise_info").resolve()
+        sub = rel_path[len("enterprise_info"):].lstrip("/")
+        file_path = (enterprise_root / sub).resolve() if sub else enterprise_root
         if not str(file_path).startswith(str(enterprise_root)):
             return "Access denied for this path"
     else:

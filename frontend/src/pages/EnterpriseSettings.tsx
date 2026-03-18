@@ -370,6 +370,10 @@ function SkillsTab() {
     const [urlPreviewing, setUrlPreviewing] = useState(false);
     const [urlImporting, setUrlImporting] = useState(false);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+    const [showSettings, setShowSettings] = useState(false);
+    const [tokenInput, setTokenInput] = useState('');
+    const [tokenStatus, setTokenStatus] = useState<{ configured: boolean; source: string; masked: string } | null>(null);
+    const [savingToken, setSavingToken] = useState(false);
 
     const showToast = (message: string, type: 'success' | 'error' = 'success') => {
         setToast({ message, type });
@@ -467,6 +471,25 @@ function SkillsTab() {
                 <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
                     <button
                         className="btn btn-secondary"
+                        style={{ fontSize: '13px', padding: '6px 10px', minWidth: 'auto' }}
+                        onClick={async () => {
+                            setShowSettings(s => !s);
+                            if (!tokenStatus) {
+                                try {
+                                    const status = await skillApi.settings.getToken();
+                                    setTokenStatus(status);
+                                } catch { /* ignore */ }
+                            }
+                        }}
+                        title="Settings"
+                    >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                        </svg>
+                    </button>
+                    <button
+                        className="btn btn-secondary"
                         style={{ fontSize: '13px' }}
                         onClick={() => { setShowUrlModal(true); setUrlInput(''); setUrlPreview(null); }}
                     >
@@ -481,6 +504,74 @@ function SkillsTab() {
                     </button>
                 </div>
             </div>
+
+            {/* GitHub Token Settings Panel */}
+            {showSettings && (
+                <div style={{
+                    marginBottom: '16px', padding: '16px', borderRadius: '8px',
+                    border: '1px solid var(--border-primary)',
+                    background: 'var(--bg-secondary, rgba(255,255,255,0.02))',
+                }}>
+                    <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>GitHub Token</div>
+                    <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '12px' }}>
+                        Configure a GitHub personal access token to increase API rate limits (60/hr → 5,000/hr) when importing skills from ClawHub or GitHub.
+                    </p>
+                    {tokenStatus?.configured && (
+                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                            Current token: <code style={{ padding: '2px 6px', borderRadius: '4px', background: 'var(--bg-tertiary)', fontSize: '11px' }}>{tokenStatus.masked}</code>
+                            <span style={{ marginLeft: '8px', color: 'var(--text-tertiary)' }}>({tokenStatus.source})</span>
+                        </div>
+                    )}
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <input
+                            type="password"
+                            className="input"
+                            placeholder="ghp_xxxxxxxxxxxx"
+                            value={tokenInput}
+                            onChange={e => setTokenInput(e.target.value)}
+                            style={{ flex: 1, fontSize: '13px', fontFamily: 'monospace' }}
+                        />
+                        <button
+                            className="btn btn-primary"
+                            style={{ fontSize: '13px' }}
+                            disabled={!tokenInput.trim() || savingToken}
+                            onClick={async () => {
+                                setSavingToken(true);
+                                try {
+                                    await skillApi.settings.setToken(tokenInput.trim());
+                                    const status = await skillApi.settings.getToken();
+                                    setTokenStatus(status);
+                                    setTokenInput('');
+                                    showToast('GitHub token saved');
+                                } catch (e: any) {
+                                    showToast(e.message || 'Failed to save', 'error');
+                                }
+                                setSavingToken(false);
+                            }}
+                        >
+                            {savingToken ? 'Saving...' : 'Save'}
+                        </button>
+                        {tokenStatus?.configured && tokenStatus.source === 'tenant' && (
+                            <button
+                                className="btn btn-secondary"
+                                style={{ fontSize: '13px' }}
+                                onClick={async () => {
+                                    try {
+                                        await skillApi.settings.setToken('');
+                                        const status = await skillApi.settings.getToken();
+                                        setTokenStatus(status);
+                                        showToast('Token cleared');
+                                    } catch (e: any) {
+                                        showToast(e.message || 'Failed', 'error');
+                                    }
+                                }}
+                            >
+                                Clear
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
 
             <FileBrowser
                 key={refreshKey}

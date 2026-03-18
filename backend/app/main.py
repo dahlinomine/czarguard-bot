@@ -83,6 +83,7 @@ async def lifespan(app: FastAPI):
         import app.models.system_settings  # noqa
         import app.models.invitation_code  # noqa
         import app.models.tenant         # noqa
+        import app.models.tenant_setting  # noqa
         import app.models.participant    # noqa
         import app.models.chat_session   # noqa
         import app.models.trigger        # noqa
@@ -116,6 +117,30 @@ async def lifespan(app: FastAPI):
                 print("[startup] ✅ Default company created", flush=True)
     except Exception as e:
         print(f"[startup] ⚠️ Default company seed failed: {e}", flush=True)
+
+    # Migrate old shared enterprise_info/ → enterprise_info_{first_tenant_id}/
+    try:
+        import shutil
+        from pathlib import Path as _Path
+        from app.config import get_settings as _gs
+        from app.models.tenant import Tenant as _T
+        from app.database import async_session as _ses
+        from sqlalchemy import select as _sel
+        _data_dir = _Path(_gs().AGENT_DATA_DIR)
+        _old_dir = _data_dir / "enterprise_info"
+        if _old_dir.exists() and any(_old_dir.iterdir()):
+            async with _ses() as _db:
+                _first = await _db.execute(_sel(_T).order_by(_T.created_at).limit(1))
+                _tenant = _first.scalar_one_or_none()
+                if _tenant:
+                    _new_dir = _data_dir / f"enterprise_info_{_tenant.id}"
+                    if not _new_dir.exists():
+                        shutil.copytree(str(_old_dir), str(_new_dir))
+                        print(f"[startup] ✅ Migrated enterprise_info → enterprise_info_{_tenant.id}", flush=True)
+                    else:
+                        print(f"[startup] ℹ️ enterprise_info_{_tenant.id} already exists, skipping migration", flush=True)
+    except Exception as e:
+        print(f"[startup] ⚠️ enterprise_info migration failed: {e}", flush=True)
 
     try:
         await seed_builtin_tools()

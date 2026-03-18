@@ -21,8 +21,29 @@ router = APIRouter(prefix="/skills", tags=["skills"])
 
 CLAWHUB_BASE = "https://clawhub.ai/api"
 GITHUB_API = "https://api.github.com"
-GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
+_GITHUB_TOKEN_ENV = os.environ.get("GITHUB_TOKEN", "")
 MAX_SKILL_SIZE = 512_000  # 500 KB total limit per skill
+
+
+async def _get_github_token(tenant_id: str | None = None) -> str:
+    """Resolve GitHub token: tenant_settings DB > env var > empty."""
+    if tenant_id:
+        try:
+            from app.models.tenant_setting import TenantSetting
+            import uuid as _uid
+            async with async_session() as db:
+                result = await db.execute(
+                    select(TenantSetting).where(
+                        TenantSetting.tenant_id == _uid.UUID(tenant_id),
+                        TenantSetting.key == "github_token",
+                    )
+                )
+                setting = result.scalar_one_or_none()
+                if setting and setting.value.get("token"):
+                    return setting.value["token"]
+        except Exception:
+            pass
+    return _GITHUB_TOKEN_ENV
 
 
 class SkillFileIn(BaseModel):
@@ -101,14 +122,16 @@ def _parse_github_url(url: str) -> dict | None:
 
 async def _fetch_github_directory(
     owner: str, repo: str, path: str, branch: str = "main",
+    token: str = "",
 ) -> list[dict]:
     """Recursively fetch all files from a GitHub directory via API.
     Returns [{"path": relative_path, "content": text}].
     """
+    _token = token or _GITHUB_TOKEN_ENV
     files: list[dict] = []
     total_size = 0
     max_depth = 3  # Prevent runaway recursion
-    headers = {"Authorization": f"Bearer {GITHUB_TOKEN}"} if GITHUB_TOKEN else {}
+    headers = {"Authorization": f"Bearer {_token}"} if _token else {}
 
     async def _recurse(dir_path: str, rel_prefix: str, depth: int = 0):
         nonlocal total_size
@@ -283,7 +306,7 @@ async def install_from_clawhub(body: ClawhubInstallIn, _=Depends(require_role("p
     # 3. Fetch files from GitHub archive
     github_path = f"skills/{handle}/{slug}"
     try:
-        files = await _fetch_github_directory("openclaw", "skills", github_path)
+        files = await _fetch_github_directory("openclaw", "skills", github_path, "main")
     except HTTPException as e:
         if e.status_code == 404:
             raise HTTPException(
@@ -545,16 +568,72 @@ async def delete_skill(skill_id: str, _=Depends(require_role("platform_admin")))
         return {"ok": True}
 
 
+# ─── Tenant GitHub Token Settings ───────────────────────────
+
+
+class SkillSettingsIn(BaseModel):
+    github_token: str = ""
+
+
+@router.get("/settings/token")
+async def get_skill_token_status(
+    current_user=Depends(require_role("platform_admin")),
+):
+    """Check if GitHub token is configured for this tenant."""
+    tenant_id = str(current_user.tenant_id) if current_user.tenant_id else None
+    token = await _get_github_token(tenant_id)
+    return {
+        "configured": bool(token),
+        "source": "tenant" if tenant_id else "env",
+        "masked": f"{token[:4]}...{token[-4:]}" if token and len(token) > 8 else ("****" if token else ""),
+    }
+
+
+@router.put("/settings/token")
+async def set_skill_token(
+    body: SkillSettingsIn,
+    current_user=Depends(require_role("platform_admin")),
+):
+    """Save GitHub token for this tenant."""
+    if not current_user.tenant_id:
+        raise HTTPException(400, "No tenant associated")
+
+    from app.models.tenant_setting import TenantSetting
+    async with async_session() as db:
+        result = await db.execute(
+            select(TenantSetting).where(
+                TenantSetting.tenant_id == current_user.tenant_id,
+                TenantSetting.key == "github_token",
+            )
+        )
+        existing = result.scalar_one_or_none()
+        if existing:
+            existing.value = {"token": body.github_token}
+        else:
+            db.add(TenantSetting(
+                tenant_id=current_user.tenant_id,
+                key="github_token",
+                value={"token": body.github_token},
+            ))
+        await db.commit()
+    return {"ok": True}
+
+
 # ─── Path-based browse endpoints for FileBrowser ───────────
 
 
 @router.get("/browse/list")
-async def browse_list(path: str = ""):
+async def browse_list(path: str = "", tenant_id: str | None = None):
     """List skill folders (root) or files/subdirs within a skill folder."""
+    import uuid as _uuid
+    from sqlalchemy import or_ as _or
     async with async_session() as db:
         if not path or path == "/":
-            # Root: list all skill folders
-            result = await db.execute(select(Skill).order_by(Skill.name))
+            # Root: list all skill folders (scoped by tenant)
+            query = select(Skill).order_by(Skill.name)
+            if tenant_id:
+                query = query.where(_or(Skill.tenant_id == None, Skill.tenant_id == _uuid.UUID(tenant_id)))
+            result = await db.execute(query)
             skills = result.scalars().all()
             return [
                 {"name": s.folder_name, "path": s.folder_name, "is_dir": True, "size": 0}

@@ -334,8 +334,25 @@ You have access to Atlassian tools via the Rovo MCP server. **Always call them v
             _agent_tenant_id = _ag_r.scalar_one_or_none()
 
             company_intro = ""
-            # Try tenant-scoped key first
+
+            # Priority 1: tenant_settings table (new)
             if _agent_tenant_id:
+                try:
+                    from app.models.tenant_setting import TenantSetting
+                    result = await db.execute(
+                        sa_select(TenantSetting).where(
+                            TenantSetting.tenant_id == _agent_tenant_id,
+                            TenantSetting.key == "company_intro",
+                        )
+                    )
+                    ts = result.scalar_one_or_none()
+                    if ts and ts.value and ts.value.get("content"):
+                        company_intro = ts.value["content"].strip()
+                except Exception:
+                    pass
+
+            # Priority 2: system_settings with tenant-scoped key (backward compat)
+            if not company_intro and _agent_tenant_id:
                 tenant_key = f"company_intro_{_agent_tenant_id}"
                 result = await db.execute(
                     sa_select(SystemSetting).where(SystemSetting.key == tenant_key)
@@ -344,7 +361,7 @@ You have access to Atlassian tools via the Rovo MCP server. **Always call them v
                 if setting and setting.value and setting.value.get("content"):
                     company_intro = setting.value["content"].strip()
 
-            # Fallback to global key
+            # Priority 3: global system_settings fallback
             if not company_intro:
                 result = await db.execute(
                     sa_select(SystemSetting).where(SystemSetting.key == "company_intro")
