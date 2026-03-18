@@ -201,11 +201,18 @@ async def _save_skill_to_db(
     folder_name: str, name: str, description: str,
     category: str, icon: str, files: list[dict],
     source_url: str | None = None,
+    tenant_id: str | None = None,
 ) -> dict:
     """Create a Skill + SkillFile records in the database."""
+    import uuid as _uuid
     async with async_session() as db:
-        # Check for folder_name conflict
-        existing = await db.execute(select(Skill).where(Skill.folder_name == folder_name))
+        # Check for folder_name conflict (scoped by tenant)
+        conflict_q = select(Skill).where(Skill.folder_name == folder_name)
+        if tenant_id:
+            conflict_q = conflict_q.where(Skill.tenant_id == _uuid.UUID(tenant_id))
+        else:
+            conflict_q = conflict_q.where(Skill.tenant_id == None)
+        existing = await db.execute(conflict_q)
         if existing.scalar_one_or_none():
             raise HTTPException(
                 409, f"A skill with folder name '{folder_name}' already exists. "
@@ -219,6 +226,7 @@ async def _save_skill_to_db(
             icon=icon,
             folder_name=folder_name,
             is_builtin=False,
+            tenant_id=_uuid.UUID(tenant_id) if tenant_id else None,
         )
         db.add(skill)
         await db.flush()
@@ -354,9 +362,10 @@ async def install_from_clawhub(body: ClawhubInstallIn, current_user: User = Depe
         name=name,
         description=description,
         category=tier_labels.get(tier, "clawhub"),
-        icon="🌐",
+        icon="",
         files=files,
         source_url=f"https://clawhub.ai/skills/{slug}",
+        tenant_id=tenant_id,
     )
 
     result["tier"] = tier
@@ -404,9 +413,10 @@ async def import_from_url(body: UrlImportIn, current_user: User = Depends(get_cu
         name=name,
         description=description,
         category=tier_labels.get(tier, "url-import"),
-        icon="🔗",
+        icon="",
         files=files,
         source_url=body.url,
+        tenant_id=tenant_id,
     )
 
     result["tier"] = tier
