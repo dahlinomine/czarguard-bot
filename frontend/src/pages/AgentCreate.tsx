@@ -14,7 +14,10 @@ export default function AgentCreate() {
     const queryClient = useQueryClient();
     const [step, setStep] = useState(0);
     const [error, setError] = useState('');
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const [agentType, setAgentType] = useState<'native' | 'openclaw'>('native');
+    // Clear field error when user edits a field
+    const clearFieldError = (field: string) => setFieldErrors(prev => { const n = { ...prev }; delete n[field]; return n; });
     const [createdApiKey, setCreatedApiKey] = useState('');
     // Current company (tenant) selection from layout sidebar
     const [currentTenant] = useState<string | null>(() => localStorage.getItem('current_tenant_id'));
@@ -82,7 +85,44 @@ export default function AgentCreate() {
         onError: (err: any) => setError(err.message),
     });
 
+    const validateStep0 = (): boolean => {
+        const errors: Record<string, string> = {};
+        const name = form.name.trim();
+        if (!name) {
+            errors.name = t('wizard.errors.nameRequired', '智能体名称不能为空');
+        } else if (name.length < 2) {
+            errors.name = t('wizard.errors.nameTooShort', '名称至少需要 2 个字符');
+        } else if (name.length > 100) {
+            errors.name = t('wizard.errors.nameTooLong', '名称不能超过 100 个字符');
+        }
+        if (form.role_description.length > 500) {
+            errors.role_description = t('wizard.errors.roleDescTooLong', '角色描述不能超过 500 个字符（当前 {{count}} 字符）').replace('{{count}}', String(form.role_description.length));
+        }
+        if (form.max_tokens_per_day && (isNaN(Number(form.max_tokens_per_day)) || Number(form.max_tokens_per_day) <= 0)) {
+            errors.max_tokens_per_day = t('wizard.errors.tokenLimitInvalid', '请输入有效的正整数');
+        }
+        if (form.max_tokens_per_month && (isNaN(Number(form.max_tokens_per_month)) || Number(form.max_tokens_per_month) <= 0)) {
+            errors.max_tokens_per_month = t('wizard.errors.tokenLimitInvalid', '请输入有效的正整数');
+        }
+        const enabledModels = (models as any[]).filter((m: any) => m.enabled);
+        if (agentType === 'native' && enabledModels.length > 0 && !form.primary_model_id) {
+            errors.primary_model_id = t('wizard.errors.modelRequired', '请选择一个主模型');
+        }
+        setFieldErrors(errors);
+        return Object.keys(errors).length === 0;
+    };
+
+    const handleNext = () => {
+        setError('');
+        if (step === 0 && !validateStep0()) return;
+        setStep(step + 1);
+    };
+
     const handleFinish = () => {
+        setError('');
+        if (step === 0 || agentType === 'openclaw') {
+            if (!validateStep0()) return;
+        }
         createMutation.mutate({
             name: form.name,
             agent_type: agentType,
@@ -290,15 +330,17 @@ For humans, the message is delivered via their available channel (e.g. Feishu).`
 
                     <div className="form-group">
                         <label className="form-label">{t('agent.fields.name')} *</label>
-                        <input className="form-input" value={form.name}
-                            onChange={(e) => setForm({ ...form, name: e.target.value })}
+                        <input className={`form-input${fieldErrors.name ? ' input-error' : ''}`} value={form.name}
+                            onChange={(e) => { setForm({ ...form, name: e.target.value }); clearFieldError('name'); }}
                             placeholder={t('openclaw.namePlaceholder', 'e.g. My OpenClaw Bot')} autoFocus />
+                        {fieldErrors.name && <div style={{ color: 'var(--error)', fontSize: '12px', marginTop: '4px' }}>{fieldErrors.name}</div>}
                     </div>
                     <div className="form-group">
                         <label className="form-label">{t('agent.fields.role')}</label>
-                        <input className="form-input" value={form.role_description}
-                            onChange={(e) => setForm({ ...form, role_description: e.target.value })}
+                        <input className={`form-input${fieldErrors.role_description ? ' input-error' : ''}`} value={form.role_description}
+                            onChange={(e) => { setForm({ ...form, role_description: e.target.value }); clearFieldError('role_description'); }}
                             placeholder={t('openclaw.rolePlaceholder', 'e.g. Personal assistant running on my Mac')} />
+                        {fieldErrors.role_description && <div style={{ color: 'var(--error)', fontSize: '12px', marginTop: '4px' }}>{fieldErrors.role_description}</div>}
                     </div>
 
                     {/* Permissions */}
@@ -330,7 +372,7 @@ For humans, the message is delivered via their available channel (e.g. Feishu).`
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '24px' }}>
                         <button className="btn btn-secondary" onClick={() => navigate('/')}>{t('common.cancel')}</button>
                         <button className="btn btn-primary" onClick={handleFinish}
-                            disabled={createMutation.isPending || !form.name}>
+                            disabled={createMutation.isPending}>
                             {createMutation.isPending ? t('common.loading') : t('openclaw.createBtn', 'Link Agent')}
                         </button>
                     </div>
@@ -368,13 +410,12 @@ For humans, the message is delivered via their available channel (e.g. Feishu).`
                     {step === 0 ? t('common.cancel') : t('wizard.prev')}
                 </button>
                 {step < STEPS.length - 1 ? (
-                    <button className="btn btn-primary" onClick={() => setStep(step + 1)}
-                        disabled={step === 0 && !form.name}>
+                    <button className="btn btn-primary" onClick={handleNext}>
                         {t('wizard.next')} →
                     </button>
                 ) : (
                     <button className="btn btn-primary" onClick={handleFinish}
-                        disabled={createMutation.isPending || !form.name}>
+                        disabled={createMutation.isPending}>
                         {createMutation.isPending ? t('common.loading') : t('wizard.finish')}
                     </button>
                 )}
@@ -455,15 +496,17 @@ For humans, the message is delivered via their available channel (e.g. Feishu).`
 
                         <div className="form-group">
                             <label className="form-label">{t('agent.fields.name')} *</label>
-                            <input className="form-input" value={form.name}
-                                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                            <input className={`form-input${fieldErrors.name ? ' input-error' : ''}`} value={form.name}
+                                onChange={(e) => { setForm({ ...form, name: e.target.value }); clearFieldError('name'); }}
                                 placeholder={t("wizard.step1.namePlaceholder")} autoFocus />
+                            {fieldErrors.name && <div style={{ color: 'var(--error)', fontSize: '12px', marginTop: '4px' }}>{fieldErrors.name}</div>}
                         </div>
                         <div className="form-group">
                             <label className="form-label">{t('agent.fields.role')}</label>
-                            <input className="form-input" value={form.role_description}
-                                onChange={(e) => setForm({ ...form, role_description: e.target.value })}
+                            <input className={`form-input${fieldErrors.role_description ? ' input-error' : ''}`} value={form.role_description}
+                                onChange={(e) => { setForm({ ...form, role_description: e.target.value }); clearFieldError('role_description'); }}
                                 placeholder={t('wizard.roleHint')} />
+                            {fieldErrors.role_description && <div style={{ color: 'var(--error)', fontSize: '12px', marginTop: '4px' }}>{fieldErrors.role_description}</div>}
                         </div>
 
                         {/* Model Selection */}
@@ -475,17 +518,18 @@ For humans, the message is delivered via their available channel (e.g. Feishu).`
                                         <label key={m.id} style={{
                                             display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px',
                                             background: form.primary_model_id === m.id ? 'var(--accent-subtle)' : 'var(--bg-elevated)',
-                                            border: `1px solid ${form.primary_model_id === m.id ? 'var(--accent-primary)' : 'var(--border-default)'}`,
+                                            border: `1px solid ${form.primary_model_id === m.id ? 'var(--accent-primary)' : fieldErrors.primary_model_id ? 'var(--error)' : 'var(--border-default)'}`,
                                             borderRadius: '8px', cursor: 'pointer',
                                         }}>
                                             <input type="radio" name="model" checked={form.primary_model_id === m.id}
-                                                onChange={() => setForm({ ...form, primary_model_id: m.id })} />
+                                                onChange={() => { setForm({ ...form, primary_model_id: m.id }); clearFieldError('primary_model_id'); }} />
                                             <div>
                                                 <div style={{ fontWeight: 500, fontSize: '13px' }}>{m.label}</div>
                                                 <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{m.provider}/{m.model}</div>
                                             </div>
                                         </label>
                                     ))}
+                                    {fieldErrors.primary_model_id && <div style={{ color: 'var(--error)', fontSize: '12px', marginTop: '2px' }}>{fieldErrors.primary_model_id}</div>}
                                 </div>
                             ) : (
                                 <div style={{ padding: '16px', background: 'var(--bg-elevated)', borderRadius: '8px', fontSize: '13px', color: 'var(--text-tertiary)', textAlign: 'center' }}>
@@ -498,15 +542,17 @@ For humans, the message is delivered via their available channel (e.g. Feishu).`
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                             <div className="form-group">
                                 <label className="form-label">{t('wizard.step1.dailyTokenLimit')}</label>
-                                <input className="form-input" type="number" value={form.max_tokens_per_day}
-                                    onChange={(e) => setForm({ ...form, max_tokens_per_day: e.target.value })}
+                                <input className={`form-input${fieldErrors.max_tokens_per_day ? ' input-error' : ''}`} type="number" value={form.max_tokens_per_day}
+                                    onChange={(e) => { setForm({ ...form, max_tokens_per_day: e.target.value }); clearFieldError('max_tokens_per_day'); }}
                                     placeholder={t("wizard.step1.unlimited")} />
+                                {fieldErrors.max_tokens_per_day && <div style={{ color: 'var(--error)', fontSize: '12px', marginTop: '4px' }}>{fieldErrors.max_tokens_per_day}</div>}
                             </div>
                             <div className="form-group">
                                 <label className="form-label">{t('wizard.step1.monthlyTokenLimit')}</label>
-                                <input className="form-input" type="number" value={form.max_tokens_per_month}
-                                    onChange={(e) => setForm({ ...form, max_tokens_per_month: e.target.value })}
+                                <input className={`form-input${fieldErrors.max_tokens_per_month ? ' input-error' : ''}`} type="number" value={form.max_tokens_per_month}
+                                    onChange={(e) => { setForm({ ...form, max_tokens_per_month: e.target.value }); clearFieldError('max_tokens_per_month'); }}
                                     placeholder={t("wizard.step1.unlimited")} />
+                                {fieldErrors.max_tokens_per_month && <div style={{ color: 'var(--error)', fontSize: '12px', marginTop: '4px' }}>{fieldErrors.max_tokens_per_month}</div>}
                             </div>
                         </div>
                     </div>

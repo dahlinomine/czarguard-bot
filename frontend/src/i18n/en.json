@@ -423,6 +423,14 @@
       "unnamed": "Unnamed",
       "model": "Model",
       "dailyLimit": "Daily limit"
+    },
+    "errors": {
+      "nameRequired": "Agent name is required",
+      "nameTooShort": "Name must be at least 2 characters",
+      "nameTooLong": "Name cannot exceed 100 characters",
+      "roleDescTooLong": "Role description cannot exceed 500 characters (current: {{count}})",
+      "tokenLimitInvalid": "Please enter a valid positive integer",
+      "modelRequired": "Please select a primary model"
     }
   },
   "task": {

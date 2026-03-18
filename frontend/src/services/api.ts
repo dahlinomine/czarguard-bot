@@ -24,12 +24,21 @@ async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
         }
         const error = await res.json().catch(() => ({ detail: 'Request failed' }));
         // Pydantic validation errors return detail as an array of objects
+        const fieldLabels: Record<string, string> = {
+            name: '名称',
+            role_description: '角色描述',
+            agent_type: '智能体类型',
+            primary_model_id: '主模型',
+            max_tokens_per_day: '每日 Token 上限',
+            max_tokens_per_month: '每月 Token 上限',
+        };
         let message = '';
         if (Array.isArray(error.detail)) {
             message = error.detail
                 .map((e: any) => {
                     const field = e.loc?.slice(-1)[0] || '';
-                    return field ? `${field}: ${e.msg}` : e.msg;
+                    const label = fieldLabels[field] || field;
+                    return label ? `${label}: ${e.msg}` : e.msg;
                 })
                 .join('; ');
         } else {

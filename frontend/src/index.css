@@ -842,6 +842,15 @@ select:focus {
   height: 38px;
 }
 
+.form-input.input-error {
+  border-color: var(--error);
+}
+
+.form-input.input-error:focus {
+  border-color: var(--error);
+  box-shadow: 0 0 0 2px var(--error-subtle);
+}
+
 .form-textarea {
   width: 100%;
   min-height: 100px;

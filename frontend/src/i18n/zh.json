@@ -113,7 +113,7 @@
     "tabs": {
       "status": "状态",
       "tasks": "任务",
-      "aware": "\u81ea\u6211\u610f\u8bc6",
+      "aware": "自我意识",
       "mind": "心智",
       "tools": "工具",
       "skills": "技能",
@@ -183,20 +183,20 @@
       "weekly": "每周"
     },
     "aware": {
-      "focus": "\u5173\u6ce8\u70b9",
-      "focusDesc": "Agent \u5f53\u524d\u6b63\u5728\u5173\u6ce8\u7684\u4e8b\u9879",
-      "focusEmpty": "\u6682\u65e0\u5173\u6ce8\u70b9\u3002Agent \u5728\u5bf9\u8bdd\u4e2d\u4f1a\u81ea\u52a8\u521b\u5efa\u548c\u66f4\u65b0\u5173\u6ce8\u70b9\u3002",
-      "viewRawMarkdown": "\u67e5\u770b\u539f\u59cb Markdown",
-      "standaloneTriggers": "\u72ec\u7acb\u89e6\u53d1\u5668",
+      "focus": "关注点",
+      "focusDesc": "Agent 当前正在关注的事项",
+      "focusEmpty": "暂无关注点。Agent 在对话中会自动创建和更新关注点。",
+      "viewRawMarkdown": "查看原始 Markdown",
+      "standaloneTriggers": "独立触发器",
       "noTriggers": "无触发器",
       "fired": "已触发 {{count}} 次",
       "disabled": "已禁用",
       "disable": "禁用",
       "enable": "启用",
       "deleteTriggerConfirm": "确定删除触发器 \"{{name}}\"？",
-      "reflections": "\u5185\u5fc3\u72ec\u767d",
-      "reflectionsDesc": "Agent \u81ea\u4e3b\u884c\u52a8\u7684\u601d\u8003\u8bb0\u5f55",
-      "reflectionsEmpty": "\u6682\u65e0\u5185\u5fc3\u72ec\u767d\u8bb0\u5f55\u3002Agent \u7684\u81ea\u4e3b\u884c\u52a8\u5c06\u663e\u793a\u5728\u8fd9\u91cc\u3002",
+      "reflections": "内心独白",
+      "reflectionsDesc": "Agent 自主行动的思考记录",
+      "reflectionsEmpty": "暂无内心独白记录。Agent 的自主行动将显示在这里。",
       "taskHistory": "任务历史",
       "taskHistoryEmpty": "暂无归档任务。",
       "inProgress": "进行中",
@@ -431,6 +431,14 @@
       "unnamed": "未命名",
       "model": "模型",
       "dailyLimit": "日限"
+    },
+    "errors": {
+      "nameRequired": "智能体名称不能为空",
+      "nameTooShort": "名称至少需要 2 个字符",
+      "nameTooLong": "名称不能超过 100 个字符",
+      "roleDescTooLong": "角色描述不能超过 500 个字符（当前 {{count}} 字符）",
+      "tokenLimitInvalid": "请输入有效的正整数",
+      "modelRequired": "请选择一个主模型"
     }
   },
   "task": {
