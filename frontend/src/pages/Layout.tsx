@@ -337,7 +337,11 @@ export default function Layout() {
                         const sortedAgents = [...agents].filter(filterAgent).sort((a: any, b: any) => {
                             const ap = pinnedAgents.has(a.id) ? 1 : 0;
                             const bp = pinnedAgents.has(b.id) ? 1 : 0;
-                            return bp - ap;
+                            if (ap !== bp) return bp - ap;
+                            // Sort by created_at descending (newest first)
+                            const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+                            const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+                            return bTime - aTime;
                         });
                         const renderAgent = (agent: any) => {
                             const badge = getAgentBadgeStatus(agent);
@@ -351,7 +355,7 @@ export default function Layout() {
                                     style={{ paddingRight: '28px' }}
                                 >
                                     <span className="sidebar-item-icon" style={{ position: 'relative' }}>
-                                        <span className="agent-avatar">{avatarChar}</span>
+                                        <span className={`agent-avatar${agent.agent_type === 'openclaw' ? ' openclaw' : ''}`}>{avatarChar}</span>
                                         {badge && <span className={`agent-avatar-badge ${badge}`} />}
                                     </span>
                                     <span className="sidebar-item-text">{agent.name}</span>

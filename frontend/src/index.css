@@ -705,6 +705,12 @@ select:focus {
   letter-spacing: -0.02em;
 }
 
+/* OpenClaw agent — dashed border to indicate external/connected */
+.agent-avatar.openclaw {
+  border: 1.5px dashed var(--text-tertiary);
+  background: transparent;
+}
+
 /* Small badge dot — absolute over avatar */
 .agent-avatar-badge {
   position: absolute;
