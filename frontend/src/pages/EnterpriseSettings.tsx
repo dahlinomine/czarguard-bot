@@ -539,13 +539,18 @@ function SkillsTab() {
                         </div>
                     )}
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        {/* Hidden inputs to absorb browser autofill */}
+                        <input type="text" name="prevent_autofill_user" style={{ display: 'none' }} tabIndex={-1} />
+                        <input type="password" name="prevent_autofill_pass" style={{ display: 'none' }} tabIndex={-1} />
                         <input
-                            type="password"
+                            type="text"
                             className="input"
+                            autoComplete="off"
+                            data-form-type="other"
                             placeholder="ghp_xxxxxxxxxxxx"
                             value={tokenInput}
                             onChange={e => setTokenInput(e.target.value)}
-                            style={{ flex: 1, fontSize: '13px', fontFamily: 'monospace' }}
+                            style={{ flex: 1, fontSize: '13px', fontFamily: 'monospace', WebkitTextSecurity: 'disc' as any }}
                         />
                         <button
                             className="btn btn-primary"

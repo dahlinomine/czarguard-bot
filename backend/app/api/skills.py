@@ -1,5 +1,6 @@
 """Skills API — global skill registry CRUD."""
 
+import asyncio
 import base64
 import logging
 import os
@@ -281,21 +282,30 @@ async def install_from_clawhub(body: ClawhubInstallIn, current_user: User = Depe
     token = await _get_github_token(tenant_id)
     slug = body.slug
 
-    # 1. Fetch metadata from ClawHub
-    try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.get(f"{CLAWHUB_BASE}/v1/skills/{slug}")
-            if resp.status_code == 404:
-                raise HTTPException(404, f"Skill '{slug}' not found on ClawHub")
-            if resp.status_code == 429:
-                raise HTTPException(429, "ClawHub rate limit exceeded. Please wait a moment and try again.")
-            if resp.status_code != 200:
-                raise HTTPException(502, f"ClawHub API error: {resp.status_code}")
-            meta = resp.json()
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(502, f"Failed to connect to ClawHub: {e}")
+    # 1. Fetch metadata from ClawHub (with retry for rate limits)
+    meta = None
+    for attempt in range(3):
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                resp = await client.get(f"{CLAWHUB_BASE}/v1/skills/{slug}")
+                if resp.status_code == 404:
+                    raise HTTPException(404, f"Skill '{slug}' not found on ClawHub")
+                if resp.status_code == 429:
+                    if attempt < 2:
+                        await asyncio.sleep(1 + attempt)  # 1s, 2s backoff
+                        continue
+                    raise HTTPException(429, "ClawHub rate limit exceeded. Please wait a moment and try again.")
+                if resp.status_code != 200:
+                    raise HTTPException(502, f"ClawHub API error: {resp.status_code}")
+                meta = resp.json()
+                break
+        except HTTPException:
+            raise
+        except Exception as e:
+            if attempt < 2:
+                await asyncio.sleep(1)
+                continue
+            raise HTTPException(502, f"Failed to connect to ClawHub: {e}")
 
     skill_info = meta.get("skill", {})
     owner_info = meta.get("owner", {})
