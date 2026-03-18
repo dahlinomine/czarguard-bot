@@ -203,13 +203,20 @@ async def search_clawhub(q: str, _=Depends(require_role("platform_admin"))):
 @router.get("/clawhub/detail/{slug}")
 async def clawhub_detail(slug: str, _=Depends(require_role("platform_admin"))):
     """Fetch full metadata for a skill from ClawHub."""
-    async with httpx.AsyncClient(timeout=15) as client:
-        resp = await client.get(f"{CLAWHUB_BASE}/v1/skills/{slug}")
-        if resp.status_code == 404:
-            raise HTTPException(404, f"Skill '{slug}' not found on ClawHub")
-        if resp.status_code != 200:
-            raise HTTPException(502, f"ClawHub API error: {resp.status_code}")
-        return resp.json()
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(f"{CLAWHUB_BASE}/v1/skills/{slug}")
+            if resp.status_code == 404:
+                raise HTTPException(404, f"Skill '{slug}' not found on ClawHub")
+            if resp.status_code == 429:
+                raise HTTPException(429, "ClawHub rate limit exceeded. Please wait a moment and try again.")
+            if resp.status_code != 200:
+                raise HTTPException(502, f"ClawHub API error: {resp.status_code}")
+            return resp.json()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(502, f"Failed to connect to ClawHub: {e}")
 
 
 @router.post("/clawhub/install")
@@ -218,13 +225,20 @@ async def install_from_clawhub(body: ClawhubInstallIn, _=Depends(require_role("p
     slug = body.slug
 
     # 1. Fetch metadata from ClawHub
-    async with httpx.AsyncClient(timeout=15) as client:
-        resp = await client.get(f"{CLAWHUB_BASE}/v1/skills/{slug}")
-        if resp.status_code == 404:
-            raise HTTPException(404, f"Skill '{slug}' not found on ClawHub")
-        if resp.status_code != 200:
-            raise HTTPException(502, f"ClawHub API error: {resp.status_code}")
-        meta = resp.json()
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(f"{CLAWHUB_BASE}/v1/skills/{slug}")
+            if resp.status_code == 404:
+                raise HTTPException(404, f"Skill '{slug}' not found on ClawHub")
+            if resp.status_code == 429:
+                raise HTTPException(429, "ClawHub rate limit exceeded. Please wait a moment and try again.")
+            if resp.status_code != 200:
+                raise HTTPException(502, f"ClawHub API error: {resp.status_code}")
+            meta = resp.json()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(502, f"Failed to connect to ClawHub: {e}")
 
     skill_info = meta.get("skill", {})
     owner_info = meta.get("owner", {})
