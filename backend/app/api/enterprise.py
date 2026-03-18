@@ -53,7 +53,7 @@ async def test_llm_model(
     from app.services.llm_client import create_llm_client
 
     # Resolve API key: use provided key, or look up from stored model
-    api_key = data.api_key
+    api_key = data.api_key if data.api_key and not data.api_key.startswith('****') else None
     if not api_key and data.model_id:
         result = await db.execute(select(LLMModel).where(LLMModel.id == data.model_id))
         existing = result.scalar_one_or_none()
