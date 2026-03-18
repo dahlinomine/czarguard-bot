@@ -777,17 +777,17 @@ export default function ChannelConfig({ mode, agentId, canManage = true, values,
                                 {/* Connection mode toggle (feishu, wecom) */}
                                 {ch.connectionMode && (
                                     <div style={{ marginBottom: '8px' }}>
-                                        <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '8px' }}>Connection Mode</label>
+                                        <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '8px' }}>{t('wizard.step5.connectionMode')}</label>
                                         <div style={{ display: 'flex', gap: '16px', marginBottom: '8px' }}>
                                             <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
                                                 <input type="radio" name={`${ch.id}_connection_mode`} value="websocket" checked={connMode === 'websocket'}
                                                     onChange={() => setConnectionModes(prev => ({ ...prev, [ch.id]: 'websocket' }))} />
-                                                WebSocket (Recommended)
+                                                {t('wizard.step5.modeWebsocket')}
                                             </label>
                                             <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
                                                 <input type="radio" name={`${ch.id}_connection_mode`} value="webhook" checked={connMode === 'webhook'}
                                                     onChange={() => setConnectionModes(prev => ({ ...prev, [ch.id]: 'webhook' }))} />
-                                                Webhook
+                                                {t('wizard.step5.modeWebhook')}
                                             </label>
                                         </div>
                                     </div>
