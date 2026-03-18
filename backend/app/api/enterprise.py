@@ -19,11 +19,71 @@ from app.schemas.schemas import (
 )
 from app.services.autonomy_service import autonomy_service
 from app.services.enterprise_sync import enterprise_sync_service
+from app.services.llm_utils import get_provider_manifest
 
 router = APIRouter(prefix="/enterprise", tags=["enterprise"])
 
 
 # ─── LLM Model Pool ────────────────────────────────────
+
+@router.get("/llm-providers")
+async def list_llm_providers(
+    current_user: User = Depends(get_current_user),
+):
+    """List supported LLM providers and capabilities from registry."""
+    return get_provider_manifest()
+
+
+class LLMTestRequest(BaseModel):
+    provider: str
+    model: str
+    api_key: str | None = None
+    base_url: str | None = None
+    model_id: str | None = None  # existing model ID to use stored API key
+
+
+@router.post("/llm-test")
+async def test_llm_model(
+    data: LLMTestRequest,
+    current_user: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Test an LLM model configuration by making a simple API call."""
+    import time
+    from app.services.llm_client import create_llm_client
+
+    # Resolve API key: use provided key, or look up from stored model
+    api_key = data.api_key if data.api_key and not data.api_key.startswith('****') else None
+    if not api_key and data.model_id:
+        result = await db.execute(select(LLMModel).where(LLMModel.id == data.model_id))
+        existing = result.scalar_one_or_none()
+        if existing:
+            api_key = existing.api_key_encrypted
+    if not api_key:
+        return {"success": False, "latency_ms": 0, "error": "API Key is required"}
+
+    start = time.time()
+    try:
+        client = create_llm_client(
+            provider=data.provider,
+            model=data.model,
+            api_key=api_key,
+            base_url=data.base_url or None,
+        )
+        # Simple test: ask model to say "ok"
+        from app.services.llm_client import LLMMessage
+        response = await client.complete(
+            messages=[LLMMessage(role="user", content="Say 'ok' and nothing else.")],
+            max_tokens=16,
+        )
+        latency_ms = int((time.time() - start) * 1000)
+        reply = (response.content or "")[:100] if response else ""
+        return {"success": True, "latency_ms": latency_ms, "reply": reply}
+    except Exception as e:
+        latency_ms = int((time.time() - start) * 1000)
+        return {"success": False, "latency_ms": latency_ms, "error": str(e)[:500]}
+
+
 
 @router.get("/llm-models", response_model=list[LLMModelOut])
 async def list_llm_models(
@@ -37,7 +97,14 @@ async def list_llm_models(
     if tid:
         query = query.where(LLMModel.tenant_id == uuid.UUID(tid))
     result = await db.execute(query)
-    return [LLMModelOut.model_validate(m) for m in result.scalars().all()]
+    models = []
+    for m in result.scalars().all():
+        out = LLMModelOut.model_validate(m)
+        # Mask API key: show last 4 chars
+        key = m.api_key_encrypted or ""
+        out.api_key_masked = f"****{key[-4:]}" if len(key) > 4 else "****"
+        models.append(out)
+    return models
 
 
 @router.post("/llm-models", response_model=LLMModelOut, status_code=status.HTTP_201_CREATED)
@@ -130,7 +197,7 @@ async def update_llm_model(
             model.label = data.label
         if hasattr(data, 'base_url') and data.base_url is not None:
             model.base_url = data.base_url
-        if data.api_key and data.api_key.strip():  # Only update API key if provided (not empty)
+        if data.api_key and data.api_key.strip() and not data.api_key.startswith('****'):  # Skip masked values
             model.api_key_encrypted = data.api_key.strip()
         if data.max_tokens_per_day is not None:
             model.max_tokens_per_day = data.max_tokens_per_day

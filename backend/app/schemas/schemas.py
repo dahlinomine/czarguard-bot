@@ -271,6 +271,7 @@ class LLMModelOut(BaseModel):
     model: str
     base_url: str | None = None
     label: str
+    api_key_masked: str = ""
     max_tokens_per_day: int | None = None
     enabled: bool
     supports_vision: bool = False

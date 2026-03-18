@@ -203,10 +203,14 @@ async def list_tenants(
 @router.get("/{tenant_id}", response_model=TenantOut)
 async def get_tenant(
     tenant_id: uuid.UUID,
-    current_user: User = Depends(require_role("platform_admin")),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get tenant details."""
+    """Get tenant details. Platform admins can view any; org_admins only their own."""
+    if current_user.role not in ("platform_admin", "org_admin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    if current_user.role == "org_admin" and str(current_user.tenant_id) != str(tenant_id):
+        raise HTTPException(status_code=403, detail="Access denied")
     result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
     tenant = result.scalar_one_or_none()
     if not tenant:

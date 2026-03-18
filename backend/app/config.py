@@ -31,9 +31,10 @@ def _default_agent_data_dir() -> str:
 
 
 def _read_version() -> str:
-    """Read version from root VERSION file, shared with frontend."""
-    for candidate in [Path(__file__).resolve().parent.parent.parent / "VERSION",
-                      Path("/app/../VERSION"), Path("/VERSION")]:
+    """Read version from local VERSION file, fallback to root."""
+    for candidate in [Path(__file__).resolve().parent.parent / "VERSION",
+                      Path(__file__).resolve().parent.parent.parent / "VERSION",
+                      Path("/app/VERSION"), Path("/VERSION")]:
         try:
             return candidate.read_text(encoding="utf-8").strip()
         except OSError:

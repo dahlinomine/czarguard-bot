@@ -51,12 +51,22 @@ export default function Login() {
             }
         } catch (err: any) {
             const msg = err.message || '';
-            if (!msg || msg === 'Failed to fetch' || msg.includes('NetworkError') || msg.includes('ERR_CONNECTION')) {
-                setError('Unable to reach server. Please check if the service is running and try again.');
-            } else if (msg.includes('500') || msg.includes('Internal Server Error')) {
-                setError('Service is starting up or experiencing issues. Please try again in a few seconds.');
+            // Server-returned error messages (e.g. disabled company, invalid credentials)
+            if (msg && msg !== 'Failed to fetch' && !msg.includes('NetworkError') && !msg.includes('ERR_CONNECTION')) {
+                // Translate known error messages
+                if (msg.includes('company has been disabled')) {
+                    setError(t('auth.companyDisabled', 'Your company has been disabled. Please contact the platform administrator.'));
+                } else if (msg.includes('Invalid credentials')) {
+                    setError(t('auth.invalidCredentials', 'Invalid username or password.'));
+                } else if (msg.includes('Account is disabled')) {
+                    setError(t('auth.accountDisabled', 'Your account has been disabled.'));
+                } else if (msg.includes('500') || msg.includes('Internal Server Error')) {
+                    setError(t('auth.serverStarting', 'Service is starting up or experiencing issues. Please try again in a few seconds.'));
+                } else {
+                    setError(msg);
+                }
             } else {
-                setError(msg || t('common.error'));
+                setError(t('auth.serverUnreachable', 'Unable to reach server. Please check if the service is running and try again.'));
             }
         } finally {
             setLoading(false);

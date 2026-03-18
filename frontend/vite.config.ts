@@ -3,12 +3,15 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 import fs from 'fs'
 
-// Read major version from root VERSION file, generate build timestamp automatically
+// Read version from local VERSION file first, fallback to root VERSION
 let majorVersion = '0.0.0'
-try {
-  majorVersion = fs.readFileSync(path.resolve(__dirname, '../VERSION'), 'utf-8').trim()
-} catch {
-  // VERSION file may not be available in Docker build context — use default
+for (const candidate of ['./VERSION', '../VERSION']) {
+  try {
+    majorVersion = fs.readFileSync(path.resolve(__dirname, candidate), 'utf-8').trim()
+    break
+  } catch {
+    // try next candidate
+  }
 }
 const now = new Date()
 const buildTimestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}.${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`

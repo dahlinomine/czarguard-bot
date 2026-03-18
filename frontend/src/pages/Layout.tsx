@@ -423,13 +423,14 @@ export default function Layout() {
                                 {SidebarIcons.bell}
                                 {(unreadCount as number) > 0 && (
                                     <span style={{
-                                        position: 'absolute', top: '-2px', right: '-2px',
-                                        width: '16px', height: '16px', borderRadius: '50%',
+                                        position: 'absolute', top: '-2px', right: '-4px',
+                                        minWidth: '16px', height: '16px', borderRadius: '8px',
+                                        padding: '0 4px', boxSizing: 'border-box',
                                         background: 'var(--error)', color: '#fff',
                                         fontSize: '10px', fontWeight: 600,
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                                         lineHeight: 1,
-                                    }}>{(unreadCount as number) > 9 ? '9+' : unreadCount}</span>
+                                    }}>{(unreadCount as number) > 99 ? '99+' : unreadCount}</span>
                                 )}
                             </button>
                             <button className="btn btn-ghost" onClick={toggleTheme} style={{

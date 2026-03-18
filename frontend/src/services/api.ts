@@ -367,9 +367,19 @@ export const skillApi = {
         delete: (path: string) =>
             request<any>(`/skills/browse/delete?path=${encodeURIComponent(path)}`, { method: 'DELETE' }),
     },
+    // ClawHub marketplace integration
+    clawhub: {
+        search: (q: string) => request<any[]>(`/skills/clawhub/search?q=${encodeURIComponent(q)}`),
+        detail: (slug: string) => request<any>(`/skills/clawhub/detail/${slug}`),
+        install: (slug: string) => request<any>('/skills/clawhub/install', { method: 'POST', body: JSON.stringify({ slug }) }),
+    },
+    importFromUrl: (url: string) =>
+        request<any>('/skills/import-from-url', { method: 'POST', body: JSON.stringify({ url }) }),
+    previewUrl: (url: string) =>
+        request<any>('/skills/import-from-url/preview', { method: 'POST', body: JSON.stringify({ url }) }),
 };
 
-// ─── Triggers (Pulse Engine) ──────────────────────────
+// ─── Triggers (Aware Engine) ──────────────────────────
 export const triggerApi = {
     list: (agentId: string) =>
         request<any[]>(`/agents/${agentId}/triggers`),

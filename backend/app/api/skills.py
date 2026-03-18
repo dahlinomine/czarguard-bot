@@ -1,5 +1,10 @@
 """Skills API — global skill registry CRUD."""
 
+import base64
+import logging
+import re
+
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -9,7 +14,13 @@ from app.database import async_session
 from app.models.skill import Skill, SkillFile
 from app.core.security import require_role
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/skills", tags=["skills"])
+
+CLAWHUB_BASE = "https://clawhub.ai/api"
+GITHUB_API = "https://api.github.com"
+MAX_SKILL_SIZE = 512_000  # 500 KB total limit per skill
 
 
 class SkillFileIn(BaseModel):
@@ -24,6 +35,373 @@ class SkillCreateIn(BaseModel):
     icon: str = "📋"
     folder_name: str
     files: list[SkillFileIn] = []
+
+
+class ClawhubInstallIn(BaseModel):
+    slug: str
+
+
+class UrlImportIn(BaseModel):
+    url: str
+
+
+# ─── Helpers ──────────────────────────────────────────
+
+
+def classify_portability(content: str) -> int:
+    """Classify skill portability: 1=pure prompt, 2=CLI/API, 3=OpenClaw native."""
+    openclaw_markers = [
+        "bash pty:", "process action:", "Clawdbot", "exec tool",
+        "openclaw.json", "imessage tool", "slack tool",
+    ]
+    cli_markers = [
+        "requires:", "bins:", 'env:', "OPENAI_API_KEY", "GITHUB_TOKEN",
+        "python3", "brew ", "pip install", "npm install", "curl ",
+    ]
+    lower = content.lower()
+    for kw in openclaw_markers:
+        if kw.lower() in lower:
+            return 3
+    for kw in cli_markers:
+        if kw.lower() in lower:
+            return 2
+    return 1
+
+
+def _parse_skill_md_frontmatter(content: str) -> dict:
+    """Extract YAML frontmatter from SKILL.md content."""
+    import yaml
+    match = re.match(r"^---\s*\n(.*?)\n---", content, re.DOTALL)
+    if not match:
+        return {}
+    try:
+        return yaml.safe_load(match.group(1)) or {}
+    except Exception:
+        return {}
+
+
+def _parse_github_url(url: str) -> dict | None:
+    """Parse a GitHub URL into owner/repo/branch/path components."""
+    # https://github.com/{owner}/{repo}/tree/{branch}/{path}
+    m = re.match(
+        r"https?://github\.com/([^/]+)/([^/]+)/tree/([^/]+)/(.*?)/?$", url
+    )
+    if m:
+        return {"owner": m.group(1), "repo": m.group(2), "branch": m.group(3), "path": m.group(4)}
+    # https://github.com/{owner}/{repo}/{path} (assume main branch)
+    m = re.match(
+        r"https?://github\.com/([^/]+)/([^/]+?)(?:\.git)?/?$", url
+    )
+    if m:
+        return {"owner": m.group(1), "repo": m.group(2), "branch": "main", "path": ""}
+    return None
+
+
+async def _fetch_github_directory(
+    owner: str, repo: str, path: str, branch: str = "main",
+) -> list[dict]:
+    """Recursively fetch all files from a GitHub directory via API.
+    Returns [{"path": relative_path, "content": text}].
+    """
+    files: list[dict] = []
+    total_size = 0
+    max_depth = 3  # Prevent runaway recursion
+
+    async def _recurse(dir_path: str, rel_prefix: str, depth: int = 0):
+        nonlocal total_size
+        if depth > max_depth:
+            return
+        api_url = f"{GITHUB_API}/repos/{owner}/{repo}/contents/{dir_path}?ref={branch}"
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.get(api_url)
+            if resp.status_code == 404:
+                raise HTTPException(404, f"GitHub path not found: {dir_path}")
+            if resp.status_code == 403:
+                raise HTTPException(429, "GitHub API rate limit exceeded. Try again later.")
+            if resp.status_code != 200:
+                raise HTTPException(502, f"GitHub API error: {resp.status_code}")
+            items = resp.json()
+
+        if isinstance(items, dict):
+            # Single file (not a directory)
+            items = [items]
+
+        # Early guard: if at top level, check that SKILL.md exists
+        if depth == 0:
+            has_skill_md = any(
+                i["name"].upper() == "SKILL.MD" and i["type"] == "file"
+                for i in items
+            )
+            dir_count = sum(1 for i in items if i["type"] == "dir")
+            if not has_skill_md:
+                if dir_count > 5:
+                    raise HTTPException(
+                        400, f"This directory contains {dir_count} subdirectories but no SKILL.md. "
+                             "Please provide the URL to a specific skill directory."
+                    )
+                raise HTTPException(400, "No SKILL.md found at the root of this directory — not a valid skill package.")
+
+        for item in items:
+            name = item["name"]
+            rel = f"{rel_prefix}{name}" if rel_prefix else name
+
+            if item["type"] == "dir":
+                await _recurse(item["path"], f"{rel}/", depth + 1)
+            elif item["type"] == "file":
+                size = item.get("size", 0)
+                total_size += size
+                if total_size > MAX_SKILL_SIZE:
+                    raise HTTPException(413, f"Skill exceeds size limit ({MAX_SKILL_SIZE // 1024}KB)")
+                # Download file content
+                async with httpx.AsyncClient(timeout=30) as client:
+                    dl_resp = await client.get(item["url"])
+                    if dl_resp.status_code == 200:
+                        data = dl_resp.json()
+                        content = base64.b64decode(data.get("content", "")).decode("utf-8", errors="replace")
+                        files.append({"path": rel, "content": content})
+
+    try:
+        await _recurse(path, "")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(502, f"Failed to fetch files from GitHub: {e}")
+    return files
+
+
+async def _save_skill_to_db(
+    folder_name: str, name: str, description: str,
+    category: str, icon: str, files: list[dict],
+    source_url: str | None = None,
+) -> dict:
+    """Create a Skill + SkillFile records in the database."""
+    async with async_session() as db:
+        # Check for folder_name conflict
+        existing = await db.execute(select(Skill).where(Skill.folder_name == folder_name))
+        if existing.scalar_one_or_none():
+            raise HTTPException(
+                409, f"A skill with folder name '{folder_name}' already exists. "
+                     "Delete it first or use a different name."
+            )
+
+        skill = Skill(
+            name=name,
+            description=description,
+            category=category,
+            icon=icon,
+            folder_name=folder_name,
+            is_builtin=False,
+        )
+        db.add(skill)
+        await db.flush()
+
+        for f in files:
+            db.add(SkillFile(skill_id=skill.id, path=f["path"], content=f["content"]))
+
+        await db.commit()
+        return {"id": str(skill.id), "name": skill.name, "folder_name": skill.folder_name}
+
+
+# ─── ClawHub Integration ─────────────────────────────
+
+
+@router.get("/clawhub/search")
+async def search_clawhub(q: str, _=Depends(require_role("platform_admin"))):
+    """Proxy search requests to the ClawHub API."""
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.get(f"{CLAWHUB_BASE}/search", params={"q": q})
+        if resp.status_code != 200:
+            raise HTTPException(502, f"ClawHub search failed: {resp.status_code}")
+        data = resp.json()
+    results = data.get("results", [])
+    return [
+        {
+            "slug": r.get("slug"),
+            "displayName": r.get("displayName"),
+            "summary": r.get("summary"),
+            "score": r.get("score"),
+        }
+        for r in results
+    ]
+
+
+@router.get("/clawhub/detail/{slug}")
+async def clawhub_detail(slug: str, _=Depends(require_role("platform_admin"))):
+    """Fetch full metadata for a skill from ClawHub."""
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(f"{CLAWHUB_BASE}/v1/skills/{slug}")
+            if resp.status_code == 404:
+                raise HTTPException(404, f"Skill '{slug}' not found on ClawHub")
+            if resp.status_code == 429:
+                raise HTTPException(429, "ClawHub rate limit exceeded. Please wait a moment and try again.")
+            if resp.status_code != 200:
+                raise HTTPException(502, f"ClawHub API error: {resp.status_code}")
+            return resp.json()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(502, f"Failed to connect to ClawHub: {e}")
+
+
+@router.post("/clawhub/install")
+async def install_from_clawhub(body: ClawhubInstallIn, _=Depends(require_role("platform_admin"))):
+    """Install a skill from ClawHub into the global registry."""
+    slug = body.slug
+
+    # 1. Fetch metadata from ClawHub
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(f"{CLAWHUB_BASE}/v1/skills/{slug}")
+            if resp.status_code == 404:
+                raise HTTPException(404, f"Skill '{slug}' not found on ClawHub")
+            if resp.status_code == 429:
+                raise HTTPException(429, "ClawHub rate limit exceeded. Please wait a moment and try again.")
+            if resp.status_code != 200:
+                raise HTTPException(502, f"ClawHub API error: {resp.status_code}")
+            meta = resp.json()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(502, f"Failed to connect to ClawHub: {e}")
+
+    skill_info = meta.get("skill", {})
+    owner_info = meta.get("owner", {})
+    moderation = meta.get("moderation") or {}
+
+    handle = owner_info.get("handle", "").lower()
+    if not handle:
+        raise HTTPException(400, "Could not determine skill owner handle from ClawHub")
+
+    # 2. Build result with moderation warning
+    is_suspicious = moderation.get("isSuspicious", False)
+    moderation_summary = moderation.get("summary", "")
+
+    # 3. Fetch files from GitHub archive
+    github_path = f"skills/{handle}/{slug}"
+    try:
+        files = await _fetch_github_directory("openclaw", "skills", github_path)
+    except HTTPException as e:
+        if e.status_code == 404:
+            raise HTTPException(
+                404, f"Skill files not found in GitHub archive at {github_path}. "
+                     "Try importing via URL instead."
+            )
+        raise
+
+    if not files:
+        raise HTTPException(404, "No files found in the skill directory")
+
+    # 4. Extract name/description from SKILL.md
+    skill_md = next((f for f in files if f["path"].upper() == "SKILL.MD"), None)
+    if not skill_md:
+        raise HTTPException(400, "No SKILL.md found — not a valid skill package")
+
+    frontmatter = _parse_skill_md_frontmatter(skill_md["content"])
+    name = frontmatter.get("name", skill_info.get("displayName", slug))
+    description = frontmatter.get("description", skill_info.get("summary", ""))
+
+    # 5. Classify portability tier
+    tier = classify_portability(skill_md["content"])
+    tier_labels = {1: "clawhub-tier1", 2: "clawhub-tier2", 3: "clawhub-tier3"}
+    has_scripts = any("/" in f["path"] for f in files if f["path"] != "SKILL.md")
+
+    # 6. Save to DB
+    result = await _save_skill_to_db(
+        folder_name=slug,
+        name=name,
+        description=description,
+        category=tier_labels.get(tier, "clawhub"),
+        icon="🌐",
+        files=files,
+        source_url=f"https://clawhub.ai/skills/{slug}",
+    )
+
+    result["tier"] = tier
+    result["is_suspicious"] = is_suspicious
+    result["moderation_summary"] = moderation_summary
+    result["has_scripts"] = has_scripts
+    result["file_count"] = len(files)
+    result["source"] = "clawhub"
+    return result
+
+
+@router.post("/import-from-url")
+async def import_from_url(body: UrlImportIn, _=Depends(require_role("platform_admin"))):
+    """Import a skill from any GitHub URL into the global registry."""
+    parsed = _parse_github_url(body.url)
+    if not parsed:
+        raise HTTPException(400, "Invalid GitHub URL. Expected format: https://github.com/{owner}/{repo}/tree/{branch}/{path}")
+
+    owner, repo, branch, path = parsed["owner"], parsed["repo"], parsed["branch"], parsed["path"]
+
+    # Fetch files
+    files = await _fetch_github_directory(owner, repo, path, branch)
+    if not files:
+        raise HTTPException(404, "No files found at the specified path")
+
+    # Validate SKILL.md exists
+    skill_md = next((f for f in files if f["path"].upper() == "SKILL.MD"), None)
+    if not skill_md:
+        raise HTTPException(400, "No SKILL.md found at this URL — not a valid skill package")
+
+    frontmatter = _parse_skill_md_frontmatter(skill_md["content"])
+    name = frontmatter.get("name", path.rstrip("/").split("/")[-1] if path else repo)
+    description = frontmatter.get("description", "")
+
+    # Derive folder_name from the last path segment
+    folder_name = path.rstrip("/").split("/")[-1] if path else repo
+
+    tier = classify_portability(skill_md["content"])
+    tier_labels = {1: "url-import-tier1", 2: "url-import-tier2", 3: "url-import-tier3"}
+
+    result = await _save_skill_to_db(
+        folder_name=folder_name,
+        name=name,
+        description=description,
+        category=tier_labels.get(tier, "url-import"),
+        icon="🔗",
+        files=files,
+        source_url=body.url,
+    )
+
+    result["tier"] = tier
+    result["file_count"] = len(files)
+    result["source"] = "url"
+    return result
+
+
+@router.post("/import-from-url/preview")
+async def preview_url_import(body: UrlImportIn, _=Depends(require_role("platform_admin"))):
+    """Preview what will be imported from a GitHub URL without saving."""
+    parsed = _parse_github_url(body.url)
+    if not parsed:
+        raise HTTPException(400, "Invalid GitHub URL format")
+
+    owner, repo, branch, path = parsed["owner"], parsed["repo"], parsed["branch"], parsed["path"]
+
+    files = await _fetch_github_directory(owner, repo, path, branch)
+    if not files:
+        raise HTTPException(404, "No files found at the specified path")
+
+    skill_md = next((f for f in files if f["path"].upper() == "SKILL.MD"), None)
+    if not skill_md:
+        raise HTTPException(400, "No SKILL.md found — not a valid skill package")
+
+    frontmatter = _parse_skill_md_frontmatter(skill_md["content"])
+    tier = classify_portability(skill_md["content"])
+
+    return {
+        "name": frontmatter.get("name", path.rstrip("/").split("/")[-1] if path else repo),
+        "description": frontmatter.get("description", ""),
+        "tier": tier,
+        "files": [{"path": f["path"], "size": len(f["content"])} for f in files],
+        "total_size": sum(len(f["content"]) for f in files),
+        "has_scripts": any("/" in f["path"] for f in files if f["path"] != "SKILL.md"),
+    }
+
+
+# ─── Standard CRUD ────────────────────────────────────
 
 
 @router.get("/")

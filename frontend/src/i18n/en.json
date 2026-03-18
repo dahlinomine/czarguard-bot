@@ -9,7 +9,7 @@
     "myCreated": "Created by me",
     "companyShared": "Company shared",
     "newAgent": "New Digital Employee",
-    "enterprise": "Enterprise Settings",
+    "enterprise": "Company Settings",
     "language": "Language",
     "plaza": "Plaza"
   },
@@ -367,7 +367,7 @@
       "custom": "Custom",
       "primaryModel": "Primary Model",
       "noModels": "No available models. Please add LLM models in",
-      "enterpriseSettings": "Enterprise Settings",
+      "enterpriseSettings": "Company Settings",
       "addModels": "first",
       "dailyTokenLimit": "Daily Token Limit",
       "monthlyTokenLimit": "Monthly Token Limit",
@@ -441,7 +441,9 @@
   },
   "chat": {
     "placeholder": "Type a message...",
-    "send": "Send"
+    "send": "Send",
+    "deleteSession": "Delete session",
+    "deleteConfirm": "Delete this session and all its messages? This cannot be undone."
   },
   "messages": {
     "title": "Messages",
@@ -452,7 +454,7 @@
     "hoursAgo": "{{count}} hours ago"
   },
   "enterprise": {
-    "title": "Enterprise Settings",
+    "title": "Company Settings",
     "tabs": {
       "llm": "Model Pool",
       "tools": "Tools",
