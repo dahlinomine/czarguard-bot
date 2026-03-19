@@ -10,7 +10,8 @@ import asyncio
 import uuid
 from datetime import datetime, timezone
 
-from loguru import logger
+import logging
+logger = logging.getLogger(__name__)
 from sqlalchemy import select
 
 from app.database import async_session
