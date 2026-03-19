@@ -171,7 +171,7 @@ BUILTIN_TOOLS = [
     {
         "name": "send_channel_file",
         "display_name": "Send File",
-        "description": "Send a file to the user via the current communication channel (Feishu, Slack, Discord, or web).",
+        "description": "Send a file to a specific person or back to the current conversation. If member_name is provided, the system resolves the recipient across all connected channels (Feishu, Slack, etc.) and delivers the file via the appropriate channel.",
         "category": "communication",
         "icon": "📎",
         "is_default": True,
@@ -179,6 +179,8 @@ BUILTIN_TOOLS = [
             "type": "object",
             "properties": {
                 "file_path": {"type": "string", "description": "Workspace-relative path to the file"},
+                "member_name": {"type": "string", "description": "Name of the person to send the file to. The system looks up this person across all configured channels and delivers via the appropriate one."},
+                "message": {"type": "string", "description": "Optional message to accompany the file"},
             },
             "required": ["file_path"],
         },
@@ -885,6 +887,9 @@ async def seed_builtin_tools():
                 if not existing.config and t.get("config"):
                     existing.config = t["config"]
                     updated_fields.append("config")
+                if existing.parameters_schema != t["parameters_schema"]:
+                    existing.parameters_schema = t["parameters_schema"]
+                    updated_fields.append("parameters_schema")
                 if updated_fields:
                     logger.info(f"[ToolSeeder] Updated {', '.join(updated_fields)}: {t['name']}")
 
