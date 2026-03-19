@@ -47,7 +47,6 @@ All changes include `open_id` fallback for environments that haven't enabled `us
 
 2. **Check environment variables** (Optional):
    ```bash
-   # New optional env var: GITHUB_TOKEN (raises GitHub API rate limit for ClawHub)
    diff .env .env.example
    ```
 
@@ -106,7 +105,7 @@ All changes include `open_id` fallback for environments that haven't enabled `us
 | Component | Dependency | Required |
 |-----------|-----------|----------|
 | Backend | `loguru>=0.7.0` | Yes |
-| Docker | `GITHUB_TOKEN` env var | Optional (raises GitHub API rate limit from 60 to 5,000/hr) |
+| Platform | GitHub Token (Company Settings > Skills) | Optional (raises GitHub API rate limit) |
 | Platform | ClawHub API Key (Company Settings > Skills) | Optional (for authenticated ClawHub access) |
 
 ### New Database Changes (auto-applied by Alembic)
