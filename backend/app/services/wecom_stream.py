@@ -5,14 +5,16 @@ No callback URL or domain verification needed.
 """
 
 import asyncio
+import logging
 import uuid
 from typing import Dict
 
-from loguru import logger
 from sqlalchemy import select
 
 from app.database import async_session
 from app.models.channel_config import ChannelConfig
+
+logger = logging.getLogger(__name__)
 
 
 class WeComStreamManager:
@@ -31,10 +33,10 @@ class WeComStreamManager:
     ):
         """Start a WeCom AI Bot WebSocket client for a specific agent."""
         if not bot_id or not bot_secret:
-            logger.warning(f"[WeCom Stream] Missing bot_id or bot_secret for {agent_id}, skipping")
+            print(f"[WeCom Stream] Missing bot_id or bot_secret for {agent_id}, skipping", flush=True)
             return
 
-        logger.info(f"[WeCom Stream] Starting client for agent {agent_id} (BotID: {bot_id[:12]}...)")
+        print(f"[WeCom Stream] Starting client for agent {agent_id} (BotID: {bot_id[:12]}...)", flush=True)
 
         # Stop existing client if any
         if stop_existing:
@@ -56,9 +58,10 @@ class WeComStreamManager:
         try:
             from wecom_aibot_sdk import WSClient, generate_req_id
         except ImportError:
-            logger.warning(
+            print(
                 "[WeCom Stream] wecom-aibot-sdk-python not installed. "
-                "Install with: pip install wecom-aibot-sdk-python"
+                "Install with: pip install wecom-aibot-sdk-python",
+                flush=True,
             )
             return
 
@@ -85,8 +88,9 @@ class WeComStreamManager:
                     chat_id = body.get("chatid", "")
                     chat_type = body.get("chat_type", "single")
 
-                    logger.info(
-                        f"[WeCom Stream] Text from {sender_id}: {user_text[:80]}"
+                    print(
+                        f"[WeCom Stream] Text from {sender_id}: {user_text[:80]}",
+                        flush=True,
                     )
 
                     # Process message and get reply
@@ -101,10 +105,10 @@ class WeComStreamManager:
                     # Reply via streaming
                     stream_id = generate_req_id("stream")
                     await client.reply_stream(frame, stream_id, reply_text, finish=True)
-                    logger.info(f"[WeCom Stream] Replied to {sender_id}: {reply_text[:80]}")
+                    print(f"[WeCom Stream] Replied to {sender_id}: {reply_text[:80]}", flush=True)
 
                 except Exception as e:
-                    logger.error(f"[WeCom Stream] Error handling text message: {e}")
+                    print(f"[WeCom Stream] Error handling text message: {e}", flush=True)
                     import traceback
                     traceback.print_exc()
                     try:
@@ -123,7 +127,7 @@ class WeComStreamManager:
                     body = frame.body or {}
                     sender = body.get("from", {})
                     sender_id = sender.get("user_id", "") or sender.get("userid", "")
-                    logger.info(f"[WeCom Stream] Image message from {sender_id} (not yet handled)")
+                    print(f"[WeCom Stream] Image message from {sender_id} (not yet handled)", flush=True)
                     stream_id = generate_req_id("stream")
                     await client.reply_stream(
                         frame, stream_id,
@@ -131,7 +135,7 @@ class WeComStreamManager:
                         finish=True,
                     )
                 except Exception as e:
-                    logger.error(f"[WeCom Stream] Error handling image: {e}")
+                    print(f"[WeCom Stream] Error handling image: {e}", flush=True)
 
             # ── Message handler: file ──
             async def on_file(frame):
@@ -139,7 +143,7 @@ class WeComStreamManager:
                     body = frame.body or {}
                     sender = body.get("from", {})
                     sender_id = sender.get("user_id", "") or sender.get("userid", "")
-                    logger.info(f"[WeCom Stream] File message from {sender_id} (not yet handled)")
+                    print(f"[WeCom Stream] File message from {sender_id} (not yet handled)", flush=True)
                     stream_id = generate_req_id("stream")
                     await client.reply_stream(
                         frame, stream_id,
@@ -147,7 +151,7 @@ class WeComStreamManager:
                         finish=True,
                     )
                 except Exception as e:
-                    logger.error(f"[WeCom Stream] Error handling file: {e}")
+                    print(f"[WeCom Stream] Error handling file: {e}", flush=True)
 
             # ── Enter chat event: send welcome ──
             async def on_enter_chat(frame):
@@ -162,9 +166,9 @@ class WeComStreamManager:
                         "msgtype": "text",
                         "text": {"content": welcome},
                     })
-                    logger.info(f"[WeCom Stream] Sent welcome message for agent {agent_id}")
+                    print(f"[WeCom Stream] Sent welcome message for agent {agent_id}", flush=True)
                 except Exception as e:
-                    logger.error(f"[WeCom Stream] Error sending welcome: {e}")
+                    print(f"[WeCom Stream] Error sending welcome: {e}", flush=True)
 
             # Register event handlers
             client.on("message.text", on_text)
@@ -173,24 +177,24 @@ class WeComStreamManager:
             client.on("event.enter_chat", on_enter_chat)
 
             # Connect and run
-            logger.info(f"[WeCom Stream] Connecting for agent {agent_id}...")
+            print(f"[WeCom Stream] Connecting for agent {agent_id}...", flush=True)
             await client.connect_async()
 
             # Keep alive
             while client.is_connected:
                 await asyncio.sleep(1)
 
-            logger.info(f"[WeCom Stream] Client disconnected for agent {agent_id}")
+            print(f"[WeCom Stream] Client disconnected for agent {agent_id}", flush=True)
 
         except asyncio.CancelledError:
-            logger.info(f"[WeCom Stream] Client task cancelled for agent {agent_id}")
+            print(f"[WeCom Stream] Client task cancelled for agent {agent_id}", flush=True)
             if agent_id in self._clients:
                 try:
                     await self._clients[agent_id].disconnect()
                 except Exception:
                     pass
         except Exception as e:
-            logger.error(f"[WeCom Stream] Client error for {agent_id}: {e}")
+            print(f"[WeCom Stream] Client error for {agent_id}: {e}", flush=True)
             import traceback
             traceback.print_exc()
         finally:
@@ -202,7 +206,7 @@ class WeComStreamManager:
         task = self._tasks.pop(agent_id, None)
         if task and not task.done():
             task.cancel()
-            logger.info(f"[WeCom Stream] Stopped client for agent {agent_id}")
+            print(f"[WeCom Stream] Stopped client for agent {agent_id}", flush=True)
         client = self._clients.pop(agent_id, None)
         if client:
             try:
@@ -212,7 +216,7 @@ class WeComStreamManager:
 
     async def start_all(self):
         """Start WebSocket clients for all configured WeCom agents with bot credentials."""
-        logger.info("[WeCom Stream] Initializing all active WeCom AI Bot channels...")
+        print("[WeCom Stream] Initializing all active WeCom AI Bot channels...", flush=True)
         async with async_session() as db:
             result = await db.execute(
                 select(ChannelConfig).where(
@@ -234,7 +238,7 @@ class WeComStreamManager:
                 )
                 started += 1
 
-        logger.info(f"[WeCom Stream] Started {started} WeCom AI Bot client(s)")
+        print(f"[WeCom Stream] Started {started} WeCom AI Bot client(s)", flush=True)
 
     def status(self) -> dict:
         """Return status of all active WebSocket clients."""
@@ -270,7 +274,7 @@ async def _process_wecom_stream_message(
         agent_r = await db.execute(_select(AgentModel).where(AgentModel.id == agent_id))
         agent_obj = agent_r.scalar_one_or_none()
         if not agent_obj:
-            logger.warning(f"[WeCom Stream] Agent {agent_id} not found")
+            print(f"[WeCom Stream] Agent {agent_id} not found")
             return "Agent not found"
         ctx_size = agent_obj.context_window_size or 20
 
@@ -332,7 +336,7 @@ async def _process_wecom_stream_message(
             db, agent_id, user_text,
             history=history, user_id=platform_user_id,
         )
-        logger.info(f"[WeCom Stream] LLM reply: {reply_text[:100]}")
+        print(f"[WeCom Stream] LLM reply: {reply_text[:100]}", flush=True)
 
         # Save assistant reply
         db.add(ChatMessage(
