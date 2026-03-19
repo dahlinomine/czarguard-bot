@@ -185,6 +185,7 @@ export default function Layout() {
     const isChinese = i18n.language?.startsWith('zh');
     const [showAccountSettings, setShowAccountSettings] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
+    const [notifCategory, setNotifCategory] = useState<string>('all');
 
     // Notification polling
     const { data: unreadCount = 0 } = useQuery({
@@ -197,8 +198,8 @@ export default function Layout() {
         enabled: !!user,
     });
     const { data: notifications = [], refetch: refetchNotifications } = useQuery({
-        queryKey: ['notifications'],
-        queryFn: () => fetchJson<any[]>('/notifications?limit=30'),
+        queryKey: ['notifications', notifCategory],
+        queryFn: () => fetchJson<any[]>(`/notifications?limit=50${notifCategory !== 'all' ? `&category=${notifCategory}` : ''}`),
         enabled: !!user && showNotifications,
     });
     const markAllRead = async () => {
@@ -522,14 +523,38 @@ export default function Layout() {
                     zIndex: 9999, display: 'flex', flexDirection: 'column',
                     boxShadow: '4px 0 24px rgba(0,0,0,0.15)', transition: 'left 0.2s',
                 }}>
-                    <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600, flex: 1 }}>{isChinese ? '通知' : 'Notifications'}</h3>
-                        {(unreadCount as number) > 0 && (
-                            <button className="btn btn-ghost" onClick={markAllRead} style={{ fontSize: '11px', padding: '4px 8px' }}>
-                                {isChinese ? '全部已读' : 'Mark all read'}
-                            </button>
-                        )}
-                        <button className="btn btn-ghost" onClick={() => setShowNotifications(false)} style={{ padding: '4px 8px', fontSize: '16px', lineHeight: 1 }}>×</button>
+                    <div style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                        <div style={{ padding: '16px 20px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600, flex: 1 }}>{isChinese ? '通知' : 'Notifications'}</h3>
+                            {(unreadCount as number) > 0 && (
+                                <button className="btn btn-ghost" onClick={markAllRead} style={{ fontSize: '11px', padding: '4px 8px' }}>
+                                    {isChinese ? '全部已读' : 'Mark all read'}
+                                </button>
+                            )}
+                            <button className="btn btn-ghost" onClick={() => setShowNotifications(false)} style={{ padding: '4px 8px', fontSize: '16px', lineHeight: 1 }}>×</button>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0', padding: '0 20px', marginTop: '12px' }}>
+                            {[
+                                { key: 'all', zh: '全部', en: 'All' },
+                                { key: 'tool', zh: '工具执行', en: 'Tool' },
+                                { key: 'approval', zh: '审批', en: 'Approval' },
+                                { key: 'social', zh: '社交', en: 'Social' },
+                            ].map(tab => (
+                                <button
+                                    key={tab.key}
+                                    onClick={() => { setNotifCategory(tab.key); }}
+                                    style={{
+                                        background: 'none', border: 'none', cursor: 'pointer',
+                                        padding: '6px 12px', fontSize: '12px', fontWeight: 500,
+                                        color: notifCategory === tab.key ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                                        borderBottom: notifCategory === tab.key ? '2px solid var(--accent-primary)' : '2px solid transparent',
+                                        marginBottom: '-1px', transition: 'all 0.15s',
+                                    }}
+                                >
+                                    {isChinese ? tab.zh : tab.en}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                     <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
                         {(notifications as any[]).length === 0 && (
