@@ -205,13 +205,17 @@ AGENT_TOOLS = [
         "type": "function",
         "function": {
             "name": "send_channel_file",
-            "description": "Send a file to the user via the current communication channel (Feishu, Slack, Discord, or web). Call this when you have created a file and the user would benefit from receiving it directly. Provide the workspace-relative file path (e.g. workspace/report.md).",
+            "description": "Send a file to a specific person or back to the current conversation. If member_name is provided, the system resolves the recipient across all connected channels (Feishu, Slack, etc.) and delivers the file via the appropriate channel. If member_name is omitted, the file is sent back through the current conversation channel.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "file_path": {
                         "type": "string",
                         "description": "Workspace-relative path to the file, e.g. workspace/report.md",
+                    },
+                    "member_name": {
+                        "type": "string",
+                        "description": "Name of the person to send the file to. If provided, the system looks up this person across all configured channels and delivers via the appropriate one.",
                     },
                     "message": {
                         "type": "string",
@@ -1473,47 +1477,236 @@ async def _search_bing(query: str, api_key: str, max_results: int, language: str
 
 
 async def _send_channel_file(agent_id: uuid.UUID, ws: Path, arguments: dict) -> str:
-    """Send a file to the user via the current channel or return a download URL for web chat."""
+    """Send a file to a person or back to the current channel.
+    
+    Priority:
+    1. If channel_file_sender ContextVar is set (channel-initiated), use it directly.
+    2. If member_name is provided, resolve the recipient across all configured channels
+       and deliver via the appropriate one (Feishu, Slack, etc.).
+    3. Fall back to web chat download URL.
+    """
     rel_path = arguments.get("file_path", "").strip()
     accompany_msg = arguments.get("message", "")
+    member_name = (arguments.get("member_name") or "").strip()
     if not rel_path:
-        return "❌ file_path is required"
+        return "Error: file_path is required"
 
     # Resolve file path within agent workspace
     file_path = (ws / rel_path).resolve()
     ws_resolved = ws.resolve()
     if not str(file_path).startswith(str(ws_resolved)):
-        # Also allow workspace/ prefix pointing to same location
         file_path = (WORKSPACE_ROOT / str(agent_id) / rel_path).resolve()
         if not file_path.exists():
-            return f"❌ File not found: {rel_path}"
+            return f"Error: File not found: {rel_path}"
     if not file_path.exists():
-        return f"❌ File not found: {rel_path}"
+        return f"Error: File not found: {rel_path}"
 
+    # Priority 1: channel-initiated (ContextVar set by channel webhook handler)
     sender = channel_file_sender.get()
     if sender is not None:
-        # Channel mode: call the channel-specific send function
         try:
             await sender(file_path, accompany_msg)
-            return f"✅ File '{file_path.name}' sent to user via channel."
+            return f"File '{file_path.name}' sent to user via channel."
         except Exception as e:
-            return f"❌ Failed to send file: {e}"
-    else:
-        # Web chat mode: return a download URL
-        aid = channel_web_agent_id.get() or str(agent_id)
-        base_abs = (WORKSPACE_ROOT / str(agent_id)).resolve()
-        try:
-            file_rel = str(file_path.resolve().relative_to(base_abs))
-        except ValueError:
-            file_rel = rel_path
+            return f"Failed to send file: {e}"
+
+    # Priority 2: recipient-aware - resolve member across channels
+    if member_name:
+        result = await _send_file_to_recipient(agent_id, file_path, member_name, accompany_msg)
+        if result:
+            return result
+
+    # Priority 3: Web chat fallback — return download URL
+    aid = channel_web_agent_id.get() or str(agent_id)
+    base_abs = (WORKSPACE_ROOT / str(agent_id)).resolve()
+    try:
+        file_rel = str(file_path.resolve().relative_to(base_abs))
+    except ValueError:
+        file_rel = rel_path
+    from app.config import get_settings as _gs
+    _s = _gs()
+    base_url = getattr(_s, 'BASE_URL', '').rstrip('/') or ''
+    download_url = f"{base_url}/api/agents/{aid}/files/download?path={file_rel}"
+    msg = f"File ready: [{file_path.name}]({download_url})"
+    if accompany_msg:
+        msg = accompany_msg + "\n\n" + msg
+    return msg
+
+
+async def _send_file_to_recipient(
+    agent_id: uuid.UUID, file_path: Path, member_name: str, message: str = ""
+) -> str | None:
+    """Resolve a recipient by name and send file via their reachable channel.
+    
+    Checks Feishu and Slack channels configured for this agent.
+    Returns a result string, or None if no channel found.
+    """
+    from app.models.channel_config import ChannelConfig
+
+    async with async_session() as db:
+        # Load all channel configs for this agent
+        result = await db.execute(
+            select(ChannelConfig).where(ChannelConfig.agent_id == agent_id)
+        )
+        configs = {c.channel_type: c for c in result.scalars().all()}
+
+    # --- Try Feishu ---
+    feishu_config = configs.get("feishu")
+    if feishu_config:
+        feishu_result = await _send_file_via_feishu(agent_id, feishu_config, file_path, member_name, message)
+        if feishu_result:
+            return feishu_result
+
+    # --- Try Slack ---
+    slack_config = configs.get("slack")
+    if slack_config:
+        slack_result = await _send_file_via_slack(agent_id, slack_config, file_path, member_name, message)
+        if slack_result:
+            return slack_result
+
+    return None  # No channel could reach this recipient
+
+
+async def _resolve_feishu_recipient(agent_id: uuid.UUID, config, member_name: str) -> tuple[str, str] | None:
+    """Resolve a Feishu recipient by name. Returns (receive_id, id_type) or None."""
+    # 1. Try feishu_user_search (checks cache, OrgMember, User table)
+    import re as _re
+    search_result = await _feishu_user_search(agent_id, {"name": member_name})
+    
+    uid_match = _re.search(r'user_id: `([A-Za-z0-9]+)`', search_result)
+    oid_match = _re.search(r'open_id: `(ou_[A-Za-z0-9]+)`', search_result)
+    
+    if uid_match:
+        return (uid_match.group(1), "user_id")
+    if oid_match:
+        return (oid_match.group(1), "open_id")
+    
+    # 2. Try AgentRelationship
+    from app.models.org import AgentRelationship
+    from sqlalchemy.orm import selectinload
+    async with async_session() as db:
+        result = await db.execute(
+            select(AgentRelationship)
+            .where(AgentRelationship.agent_id == agent_id)
+            .options(selectinload(AgentRelationship.member))
+        )
+        for r in result.scalars().all():
+            if r.member and r.member.name == member_name:
+                if r.member.feishu_user_id:
+                    return (r.member.feishu_user_id, "user_id")
+                if r.member.feishu_open_id:
+                    return (r.member.feishu_open_id, "open_id")
+                break
+    return None
+
+
+async def _send_file_via_feishu(agent_id, config, file_path: Path, member_name: str, message: str) -> str | None:
+    """Send file to a person via Feishu. Returns result string or None."""
+    recipient = await _resolve_feishu_recipient(agent_id, config, member_name)
+    if not recipient:
+        return None
+    
+    receive_id, id_type = recipient
+    from app.services.feishu_service import feishu_service
+    try:
+        await feishu_service.upload_and_send_file(
+            config.app_id, config.app_secret,
+            receive_id, file_path,
+            receive_id_type=id_type,
+            accompany_msg=message,
+        )
+        return f"File '{file_path.name}' sent to {member_name} via Feishu."
+    except Exception as e:
+        # If upload fails, try sending a download link as fallback
+        import json as _j
         from app.config import get_settings as _gs
         _s = _gs()
         base_url = getattr(_s, 'BASE_URL', '').rstrip('/') or ''
-        download_url = f"{base_url}/api/agents/{aid}/files/download?path={file_rel}"
-        msg = f"✅ File ready: [{file_path.name}]({download_url})"
-        if accompany_msg:
-            msg = accompany_msg + "\n\n" + msg
-        return msg
+        base_abs = (WORKSPACE_ROOT / str(agent_id)).resolve()
+        try:
+            _rel = str(file_path.resolve().relative_to(base_abs))
+        except ValueError:
+            _rel = file_path.name
+        parts = []
+        if message:
+            parts.append(message)
+        if base_url:
+            dl_url = f"{base_url}/api/agents/{agent_id}/files/download?path={_rel}"
+            parts.append(f"{file_path.name}\n{dl_url}")
+        parts.append(f"File upload failed ({e}). If you need direct file sending, enable im:resource permission in Feishu.")
+        try:
+            await feishu_service.send_message(
+                config.app_id, config.app_secret,
+                receive_id, "text",
+                _j.dumps({"text": "\n\n".join(parts)}, ensure_ascii=False),
+                receive_id_type=id_type,
+            )
+            return f"File upload to Feishu failed, sent download link to {member_name} instead."
+        except Exception:
+            return f"Failed to send file to {member_name} via Feishu: {e}"
+
+
+async def _send_file_via_slack(agent_id, config, file_path: Path, member_name: str, message: str) -> str | None:
+    """Send file to a person via Slack DM. Returns result string or None."""
+    import httpx
+    bot_token = config.app_secret or ""
+    if not bot_token:
+        return None
+    
+    # Resolve Slack user by name
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(
+                "https://slack.com/api/users.list",
+                headers={"Authorization": f"Bearer {bot_token}"},
+                params={"limit": 200},
+            )
+            data = resp.json()
+            if not data.get("ok"):
+                return None
+            slack_user_id = None
+            for u in data.get("members", []):
+                profile = u.get("profile", {})
+                display = profile.get("display_name", "") or profile.get("real_name", "") or u.get("real_name", "")
+                if display == member_name or u.get("name") == member_name:
+                    slack_user_id = u.get("id")
+                    break
+            if not slack_user_id:
+                return None
+            
+            # Open a DM channel
+            dm_resp = await client.post(
+                "https://slack.com/api/conversations.open",
+                headers={"Authorization": f"Bearer {bot_token}", "Content-Type": "application/json"},
+                json={"users": slack_user_id},
+            )
+            dm_data = dm_resp.json()
+            if not dm_data.get("ok"):
+                return None
+            channel_id = dm_data["channel"]["id"]
+            
+            # Upload file
+            upload_url_resp = await client.post(
+                "https://slack.com/api/files.getUploadURLExternal",
+                headers={"Authorization": f"Bearer {bot_token}"},
+                data={"filename": file_path.name, "length": str(file_path.stat().st_size)},
+            )
+            ud = upload_url_resp.json()
+            if not ud.get("ok"):
+                return f"Slack file upload failed: {ud.get('error')}"
+            await client.post(ud["upload_url"], content=file_path.read_bytes(),
+                            headers={"Content-Type": "application/octet-stream"})
+            complete = await client.post(
+                "https://slack.com/api/files.completeUploadExternal",
+                headers={"Authorization": f"Bearer {bot_token}"},
+                json={"files": [{"id": ud["file_id"]}], "channel_id": channel_id,
+                      "initial_comment": message or ""},
+            )
+            if not complete.json().get("ok"):
+                return f"Slack file upload complete failed: {complete.json().get('error')}"
+            return f"File '{file_path.name}' sent to {member_name} via Slack."
+    except Exception as e:
+        return f"Failed to send file via Slack: {e}"
 
 
 async def _execute_mcp_tool(tool_name: str, arguments: dict, agent_id=None) -> str:
