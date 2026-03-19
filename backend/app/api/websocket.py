@@ -293,7 +293,7 @@ async def call_llm(
             return response.content or "[LLM returned empty content]"
 
         # Execute tool calls
-        logger.info(f"[LLM] Round {round_i+1}: {len(response.tool_calls)} tool call(s)")
+        logger.info(f"[LLM] Round {round_i+1}: {len(response.tool_calls)} tool call(s), finish_reason={response.finish_reason}")
 
         # Add assistant message with tool calls
         api_messages.append(LLMMessage(
@@ -313,7 +313,7 @@ async def call_llm(
             fn = tc["function"]
             tool_name = fn["name"]
             raw_args = fn.get("arguments", "{}")
-            logger.debug(f"[LLM] Raw arguments for {tool_name}: {repr(raw_args[:300])}")
+            logger.info(f"[LLM] Raw arguments for {tool_name} (len={len(raw_args)}): {repr(raw_args[:300])}")
             try:
                 args = json.loads(raw_args) if raw_args else {}
             except json.JSONDecodeError:
