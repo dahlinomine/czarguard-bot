@@ -2802,13 +2802,23 @@ async def _send_message_to_agent(from_agent_id: uuid.UUID, args: dict) -> str:
                 timeout=120.0,
             )
             try:
+                import asyncio
+                import httpx
                 for _round in range(max_tool_rounds):
-                    response = await llm_client.complete(
-                        messages=full_msgs,
-                        tools=tools_for_llm if tools_for_llm else None,
-                        temperature=0.7,
-                        max_tokens=4096,
-                    )
+                    # Retry up to 3 times on transient LLM timeouts before aborting
+                    for _attempt in range(3):
+                        try:
+                            response = await llm_client.complete(
+                                messages=full_msgs,
+                                tools=tools_for_llm if tools_for_llm else None,
+                                temperature=0.7,
+                                max_tokens=4096,
+                            )
+                            break
+                        except httpx.ReadTimeout:
+                            if _attempt == 2:
+                                raise
+                            await asyncio.sleep(2 ** _attempt)  # 1s, then 2s
 
                     # Track tokens from API response
                     real_tokens = extract_usage_tokens(response.usage)
@@ -2920,7 +2930,8 @@ async def _send_message_to_agent(from_agent_id: uuid.UUID, args: dict) -> str:
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return f"❌ Message send error: {str(e)[:200]}"
+        err_detail = str(e) or type(e).__name__
+        return f"❌ Message send error: {err_detail[:200]}"
 
 
 
