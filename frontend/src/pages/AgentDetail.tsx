@@ -863,8 +863,16 @@ function AgentDetailInner() {
     };
 
     const selectSession = async (sess: any) => {
+        // Close the existing WS before switching so its onmessage can no longer
+        // write stale streaming data into the new session's message list.
+        if (wsRef.current && wsRef.current.readyState !== WebSocket.CLOSED) {
+            wsRef.current.close();
+            wsRef.current = null;
+        }
         setChatMessages([]);
         setHistoryMsgs([]);
+        setIsStreaming(false);
+        setIsWaiting(false);
         setActiveSession(sess);
         // Always load stored messages for the selected session
         const tkn = localStorage.getItem('token');
@@ -1033,9 +1041,15 @@ function AgentDetailInner() {
 
     // Reset state whenever the viewed agent changes
     useEffect(() => {
+        if (wsRef.current && wsRef.current.readyState !== WebSocket.CLOSED) {
+            wsRef.current.close();
+            wsRef.current = null;
+        }
         setActiveSession(null);
         setChatMessages([]);
         setHistoryMsgs([]);
+        setIsStreaming(false);
+        setIsWaiting(false);
         setChatScope('mine');
         setAgentExpired(false);
         settingsInitRef.current = false;
