@@ -537,7 +537,7 @@ For humans, the message is delivered via their available channel (e.g. Feishu).`
                                             }}
                                         >
                                             <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)' }}>{tmpl.icon || tmpl.name?.[0] || '·'}</div>
-                                            <div style={{ fontSize: '12px', marginTop: '4px' }}>{t(`wizard.templates.${tmpl.name}`, tmpl.name)}</div>
+                                            <div style={{ fontSize: '12px', marginTop: '4px' }}>{String(t(`wizard.templates.${tmpl.name}`, tmpl.name))}</div>
                                         </div>
                                     ))}
                                 </div>
