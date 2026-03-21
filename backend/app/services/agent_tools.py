@@ -2731,6 +2731,13 @@ async def _send_file_to_agent(from_agent_id: uuid.UUID, ws: Path, args: dict) ->
     if not source_file_path.is_file():
         return f"❌ Source path is not a file: {rel_path}"
 
+    # File size limit (50 MB)
+    MAX_FILE_SIZE = 50 * 1024 * 1024
+    file_size = source_file_path.stat().st_size
+    if file_size > MAX_FILE_SIZE:
+        size_mb = file_size / (1024 * 1024)
+        return f"❌ File too large ({size_mb:.1f} MB). Maximum allowed is 50 MB."
+
     try:
         from app.models.agent import Agent
         from app.services.activity_logger import log_activity
@@ -2740,13 +2747,28 @@ async def _send_file_to_agent(from_agent_id: uuid.UUID, ws: Path, args: dict) ->
             src_result = await db.execute(select(Agent).where(Agent.id == from_agent_id))
             source_agent = src_result.scalar_one_or_none()
             source_name = source_agent.name if source_agent else "Unknown agent"
+            source_tenant_id = source_agent.tenant_id if source_agent else None
 
-            target_result = await db.execute(
-                select(Agent).where(Agent.name.ilike(f"%{agent_name}%"), Agent.id != from_agent_id)
+            # Build base filter: same tenant + not self
+            base_filter = [Agent.id != from_agent_id]
+            if source_tenant_id:
+                base_filter.append(Agent.tenant_id == source_tenant_id)
+
+            # Try exact name match first, then fuzzy
+            target_agent = None
+            exact_result = await db.execute(
+                select(Agent).where(Agent.name == agent_name, *base_filter)
             )
-            target_agent = target_result.scalars().first()
+            target_agent = exact_result.scalars().first()
             if not target_agent:
-                all_r = await db.execute(select(Agent).where(Agent.id != from_agent_id))
+                # Sanitize SQL wildcards in user input
+                safe_name = agent_name.replace("%", "").replace("_", "\_")
+                fuzzy_result = await db.execute(
+                    select(Agent).where(Agent.name.ilike(f"%{safe_name}%"), *base_filter)
+                )
+                target_agent = fuzzy_result.scalars().first()
+            if not target_agent:
+                all_r = await db.execute(select(Agent).where(*base_filter))
                 names = [a.name for a in all_r.scalars().all()]
                 return f"❌ No agent found matching '{agent_name}'. Available: {', '.join(names) if names else 'none'}"
 
@@ -2866,14 +2888,27 @@ async def _send_message_to_agent(from_agent_id: uuid.UUID, args: dict) -> str:
             src_result = await db.execute(select(Agent).where(Agent.id == from_agent_id))
             source_agent = src_result.scalar_one_or_none()
             source_name = source_agent.name if source_agent else "Unknown agent"
+            source_tenant_id = source_agent.tenant_id if source_agent else None
 
-            # Find target agent by name
-            result = await db.execute(
-                select(Agent).where(Agent.name.ilike(f"%{agent_name}%"), Agent.id != from_agent_id)
+            # Build base filter: same tenant + not self
+            base_filter = [Agent.id != from_agent_id]
+            if source_tenant_id:
+                base_filter.append(Agent.tenant_id == source_tenant_id)
+
+            # Find target agent by name — exact match first, then fuzzy
+            target = None
+            exact_result = await db.execute(
+                select(Agent).where(Agent.name == agent_name, *base_filter)
             )
-            target = result.scalars().first()
+            target = exact_result.scalars().first()
             if not target:
-                all_r = await db.execute(select(Agent).where(Agent.id != from_agent_id))
+                safe_name = agent_name.replace("%", "").replace("_", "\_")
+                fuzzy_result = await db.execute(
+                    select(Agent).where(Agent.name.ilike(f"%{safe_name}%"), *base_filter)
+                )
+                target = fuzzy_result.scalars().first()
+            if not target:
+                all_r = await db.execute(select(Agent).where(*base_filter))
                 names = [a.name for a in all_r.scalars().all()]
                 return f"❌ No agent found matching '{agent_name}'. Available: {', '.join(names) if names else 'none'}"
 
