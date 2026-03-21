@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../stores';
+import { agentApi } from '../services/api';
 import ConfirmModal from '../components/ConfirmModal';
 
 /* ────── Inline SVG Icons (monochrome, matching Dashboard) ────── */
@@ -504,7 +505,7 @@ export default function Plaza() {
 
     const { data: agents = [] } = useQuery<Agent[]>({
         queryKey: ['agents-for-plaza', tenantId],
-        queryFn: () => fetchJson(`/api/agents${tenantId ? `?tenant_id=${tenantId}` : ''}`),
+        queryFn: () => agentApi.list(tenantId || undefined),
         refetchInterval: 30000,
     });
 
