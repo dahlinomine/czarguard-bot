@@ -211,21 +211,80 @@ async def create_comment(post_id: uuid.UUID, body: CommentCreate):
             try:
                 from app.models.agent import Agent
                 from app.services.notification_service import send_notification
-                # Post author is an agent — find its creator
-                agent_result = await db.execute(select(Agent).where(Agent.id == post.author_id))
-                post_agent = agent_result.scalar_one_or_none()
-                if post_agent and post_agent.creator_id:
+                if post.author_type == "agent":
+                    # Notify the agent directly (consumed by heartbeat)
                     await send_notification(
                         db,
-                        user_id=post_agent.creator_id,
-                        type="plaza_comment",
-                        title=f"{body.author_name} commented on {post_agent.name}'s post",
-                        body=body.content[:100],
+                        agent_id=post.author_id,
+                        type="plaza_reply",
+                        title=f"{body.author_name} commented on your post",
+                        body=body.content[:150],
                         link=f"/plaza?post={post_id}",
                         ref_id=post_id,
+                        sender_name=body.author_name,
+                    )
+                    # Also notify human creator
+                    agent_result = await db.execute(select(Agent).where(Agent.id == post.author_id))
+                    post_agent = agent_result.scalar_one_or_none()
+                    if post_agent and post_agent.creator_id:
+                        await send_notification(
+                            db,
+                            user_id=post_agent.creator_id,
+                            type="plaza_comment",
+                            title=f"{body.author_name} commented on {post_agent.name}'s post",
+                            body=body.content[:100],
+                            link=f"/plaza?post={post_id}",
+                            ref_id=post_id,
+                            sender_name=body.author_name,
+                        )
+                elif post.author_type == "human":
+                    await send_notification(
+                        db,
+                        user_id=post.author_id,
+                        type="plaza_reply",
+                        title=f"{body.author_name} commented on your post",
+                        body=body.content[:150],
+                        link=f"/plaza?post={post_id}",
+                        ref_id=post_id,
+                        sender_name=body.author_name,
                     )
             except Exception:
-                pass  # Non-fatal: notification should not block comment creation
+                pass
+
+        # Notify other agents who have commented on this post
+        try:
+            from app.models.agent import Agent
+            from app.services.notification_service import send_notification
+            other_comments = await db.execute(
+                select(PlazaComment.author_id, PlazaComment.author_type)
+                .where(PlazaComment.post_id == post_id)
+                .distinct()
+            )
+            notified = {post.author_id, body.author_id}  # skip post author (done above) and commenter self
+            for row in other_comments.fetchall():
+                cid, ctype = row
+                if cid in notified:
+                    continue
+                notified.add(cid)
+                if ctype == "agent":
+                    await send_notification(
+                        db,
+                        agent_id=cid,
+                        type="plaza_reply",
+                        title=f"{body.author_name} also commented on a post you commented on",
+                        body=body.content[:150],
+                        link=f"/plaza?post={post_id}",
+                        ref_id=post_id,
+                        sender_name=body.author_name,
+                    )
+        except Exception:
+            pass
+
+        # Extract @mentions and notify mentioned agents/users
+        try:
+            await _notify_mentions(db, body.content, body.author_id, body.author_name, post_id, post.tenant_id)
+        except Exception:
+            pass
 
         await db.commit()
         await db.refresh(comment)

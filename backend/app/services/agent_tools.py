@@ -3026,6 +3026,9 @@ async def _send_message_to_agent(from_agent_id: uuid.UUID, args: dict) -> str:
             await db.commit()
 
             # Call target LLM with tool support (multi-round)
+            import asyncio
+            import random
+            import httpx
             from app.services.llm_utils import (
                 get_provider_base_url,
                 create_llm_client,
@@ -3033,8 +3036,6 @@ async def _send_message_to_agent(from_agent_id: uuid.UUID, args: dict) -> str:
             )
             from app.services.llm_client import LLMError
             from app.services.agent_tools import get_agent_tools_for_llm, execute_tool
-            import asyncio
-            import httpx
             base_url = get_provider_base_url(target_model.provider, target_model.base_url)
             if not base_url:
                 return f"⚠️ {target.name}'s model has no API base URL configured"
@@ -3059,11 +3060,25 @@ async def _send_message_to_agent(from_agent_id: uuid.UUID, args: dict) -> str:
                 base_url=base_url,
                 timeout=120.0,
             )
+            _A2A_RETRYABLE_MARKERS = (
+                "http 408", "http 429", "http 500", "http 502", "http 503", "http 504",
+                "timeout", "timed out", "connection failed", "temporarily unavailable", "rate limit",
+            )
+            _A2A_MAX_RETRIES = 3
+
+            def _is_retryable_llm_error(exc: Exception) -> bool:
+                """Determine whether an LLM exception is transient and worth retrying."""
+                if isinstance(exc, (httpx.TimeoutException, httpx.TransportError)):
+                    return True
+                if isinstance(exc, LLMError):
+                    lowered = (str(exc) or "").lower()
+                    return any(m in lowered for m in _A2A_RETRYABLE_MARKERS)
+                return False
+
             try:
                 for _round in range(max_tool_rounds):
-                    max_round_retries = 3
                     response = None
-                    for attempt in range(1, max_round_retries + 1):
+                    for attempt in range(1, _A2A_MAX_RETRIES + 1):
                         try:
                             response = await llm_client.complete(
                                 messages=full_msgs,
@@ -3073,42 +3088,18 @@ async def _send_message_to_agent(from_agent_id: uuid.UUID, args: dict) -> str:
                             )
                             break
                         except Exception as llm_exc:
-                            err_text = str(llm_exc) or type(llm_exc).__name__
-                            is_retryable = isinstance(
-                                llm_exc,
-                                (
-                                    httpx.TimeoutException,
-                                    httpx.TransportError,
-                                ),
-                            )
-
-                            if isinstance(llm_exc, LLMError):
-                                lowered = err_text.lower()
-                                retryable_markers = (
-                                    "http 408",
-                                    "http 429",
-                                    "http 500",
-                                    "http 502",
-                                    "http 503",
-                                    "http 504",
-                                    "timeout",
-                                    "timed out",
-                                    "connection failed",
-                                    "temporarily unavailable",
-                                    "rate limit",
-                                )
-                                is_retryable = is_retryable or any(m in lowered for m in retryable_markers)
-
-                            if not is_retryable or attempt >= max_round_retries:
+                            if not _is_retryable_llm_error(llm_exc) or attempt >= _A2A_MAX_RETRIES:
                                 raise
 
-                            backoff_seconds = float(2 ** (attempt - 1))
+                            err_text = str(llm_exc) or type(llm_exc).__name__
+                            # Exponential backoff with jitter to prevent thundering herd
+                            backoff = (2 ** (attempt - 1)) + random.uniform(0, 0.5)
                             logger.warning(
                                 f"[A2A] LLM call failed for {target.name} (round={_round + 1}, "
-                                f"attempt={attempt}/{max_round_retries}): {err_text[:200]}. "
-                                f"Retrying in {backoff_seconds:.1f}s"
+                                f"attempt={attempt}/{_A2A_MAX_RETRIES}): {err_text[:200]}. "
+                                f"Retrying in {backoff:.1f}s"
                             )
-                            await asyncio.sleep(backoff_seconds)
+                            await asyncio.sleep(backoff)
 
                     if response is None:
                         raise RuntimeError("A2A LLM response is unexpectedly empty after retries")
