@@ -101,7 +101,7 @@ async def tg_send_typing(chat_id: int):
 
 async def chat_with_agent(agent_id: str, message: str, session_id: str) -> str:
     token = await get_jwt_token()
-    ws_url = f"{CZAR_WS_URL}/ws/chat/{agent_id}?token={token}&session_id={session_id}"
+    ws_url = f"{CZAR_WS_URL}/ws/chat/{agent_id}?token={token}"
 
     collected: list[str] = []
     timeout = 90.0
