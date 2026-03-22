@@ -21,7 +21,7 @@ log = logging.getLogger(__name__)
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 CZAR_BASE_URL = os.environ.get("CZAR_BASE_URL", "https://czarguard-bot-production.up.railway.app")
 CZAR_WS_URL = CZAR_BASE_URL.replace("https://", "wss://").replace("http://", "ws://")
-CZAR_EMAIL = os.environ.get("CZAR_ADMIN_EMAIL", "alhassan.mohammed.erc3643@gmail.com")
+CZAR_USERNAME = os.environ.get("CZAR_ADMIN_USERNAME", "alhassan")
 CZAR_PASSWORD = os.environ.get("CZAR_ADMIN_PASSWORD", "")
 
 AGENT_MAP = {
@@ -65,7 +65,7 @@ async def get_jwt_token() -> str:
     async with httpx.AsyncClient() as client:
         resp = await client.post(
             f"{CZAR_BASE_URL}/api/auth/login",
-            json={"username": CZAR_EMAIL, "password": CZAR_PASSWORD},
+            json={"username": CZAR_USERNAME, "password": CZAR_PASSWORD},
             timeout=15,
         )
         resp.raise_for_status()
