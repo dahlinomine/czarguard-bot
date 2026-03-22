@@ -1,6 +1,6 @@
 """
 czar_llm_seed.py — Pre-seed ChatAnywhere LLM model pool on startup.
-Reads CZAR_LLM_* env vars so Railway users don't need to configure LLM manually.
+Reads CZAR_LLM_* env vars so Railway users do not need to configure LLM manually.
 """
 import asyncio, os, sys
 sys.path.insert(0, ".")
@@ -8,7 +8,6 @@ sys.path.insert(0, ".")
 from app.database import async_session
 from app.models.llm import LLMModel
 from app.models.tenant import Tenant
-from app.core.security import encrypt_api_key
 from sqlalchemy import select
 
 
@@ -46,16 +45,12 @@ async def seed_llm():
             if existing.scalar_one_or_none():
                 continue
 
-            try:
-                encrypted_key = encrypt_api_key(api_key)
-            except Exception:
-                encrypted_key = api_key  # fallback if encryption not set up yet
-
+            # api_key_encrypted stores key plaintext for now (enterprise.py same pattern)
             db.add(LLMModel(
                 tenant_id=tenant_id,
                 provider="openai",
                 model=m["model"],
-                api_key_encrypted=encrypted_key,
+                api_key_encrypted=api_key,
                 base_url=base_url,
                 label=m["label"],
                 enabled=True,
@@ -72,3 +67,4 @@ async def seed_llm():
 
 if __name__ == "__main__":
     asyncio.run(seed_llm())
+
