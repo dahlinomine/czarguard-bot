@@ -29,3 +29,10 @@ _agents/
 
 # Internal docs
 docs/
+
+# CZAR secrets
+.env
+*.env
+config/credentials.env
+backend/czar_runtime_config.json
+ss-nodes.json

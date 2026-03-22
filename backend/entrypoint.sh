@@ -97,9 +97,16 @@ async def main():
 asyncio.run(main())
 PYEOF
 
+echo "[entrypoint] Step 2a: Pre-seeding ChatAnywhere LLM pool..."
+python /app/czar_llm_seed.py || echo "[entrypoint] LLM seed skipped"
+
 echo "[entrypoint] Step 2: Running alembic migrations..."
 # Run all migrations to ensure database schema is up to date
 alembic upgrade head
+
+
+echo "[entrypoint] Step 3a: Seeding CZAR operator fleet (if not already seeded)..."
+python /app/czar_agents.py || echo "[entrypoint] CZAR seeder skipped (platform_admin not yet created — run manually after first login)"
 
 echo "[entrypoint] Step 3: Starting uvicorn..."
 exec uvicorn app.main:app --host 0.0.0.0 --port 8000
