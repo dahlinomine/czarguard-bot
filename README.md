@@ -46,7 +46,7 @@ SECRET_KEY              = <openssl rand -hex 32>
 JWT_SECRET_KEY          = <openssl rand -hex 32>
 CZAR_LLM_API_KEY        = sk-your-chatanywhere-key
 CZAR_LLM_BASE_URL       = https://api.chatanywhere.tech/v1
-TELEGRAM_BOT_TOKEN      = TELEGRAM_TOKEN_REMOVED
+TELEGRAM_BOT_TOKEN      = your-telegram-bot-token
 TELEGRAM_CHAT_ID        = your-telegram-user-id
 AGENT_DATA_DIR          = /data/agents
 ```
