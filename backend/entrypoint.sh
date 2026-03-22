@@ -108,5 +108,14 @@ alembic upgrade head
 echo "[entrypoint] Step 3a: Seeding CZAR operator fleet (if not already seeded)..."
 python /app/czar_agents.py || echo "[entrypoint] CZAR seeder skipped (platform_admin not yet created — run manually after first login)"
 
-echo "[entrypoint] Step 3: Starting uvicorn..."
+echo "[entrypoint] Step 4: Starting CZAR Telegram bridge in background..."
+if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$CZAR_ADMIN_PASSWORD" ]; then
+    python /app/czar_telegram_bridge.py &
+    BRIDGE_PID=$!
+    echo "[entrypoint] Telegram bridge started (PID: $BRIDGE_PID)"
+else
+    echo "[entrypoint] TELEGRAM_BOT_TOKEN or CZAR_ADMIN_PASSWORD not set — Telegram bridge skipped"
+fi
+
+echo "[entrypoint] Step 5: Starting uvicorn..."
 exec uvicorn app.main:app --host 0.0.0.0 --port 8000
